@@ -1,0 +1,196 @@
+use crate::{
+    TextComponent, format::Format, interactivity::Interactivity, translation::TranslatedMessage,
+};
+#[cfg(feature = "serde")]
+use serde::Serialize;
+use std::borrow::Cow;
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+pub enum Content {
+    Text(Cow<'static, str>),
+    Keybind(Cow<'static, str>),
+    #[cfg_attr(feature = "serde", serde(untagged))]
+    Translate(TranslatedMessage),
+    #[cfg_attr(feature = "serde", serde(untagged))]
+    Object(Object),
+    #[cfg_attr(feature = "serde", serde(untagged))]
+    /// #### Needs [resolution](TextComponent::resolve)
+    Resolvable(Resolvable),
+}
+
+impl From<String> for Content {
+    fn from(value: String) -> Self {
+        Content::Text(Cow::Owned(value))
+    }
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub enum Object {
+    Atlas {
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+        atlas: Option<Cow<'static, str>>,
+        sprite: Cow<'static, str>,
+    },
+    Player {
+        player: ObjectPlayer,
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Clone::clone"))]
+        hat: bool,
+    },
+}
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct ObjectPlayer {
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub name: Option<Cow<'static, str>>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub id: Option<Cow<'static, str>>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub texture: Option<Cow<'static, str>>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
+    pub properties: Vec<PlayerProperties>,
+}
+impl ObjectPlayer {
+    /// Creates a [ObjectPlayer] from a player's name.
+    pub fn name<T: Into<Cow<'static, str>>>(name: T) -> Self {
+        ObjectPlayer {
+            name: Some(name.into()),
+            id: None,
+            texture: None,
+            properties: vec![],
+        }
+    }
+    /// Creates a [ObjectPlayer] from the id of a player.
+    pub fn id<T: Into<Cow<'static, str>>>(id: T) -> Self {
+        ObjectPlayer {
+            name: None,
+            id: Some(id.into()),
+            texture: None,
+            properties: vec![],
+        }
+    }
+    /// Creates a [ObjectPlayer] from the path to a texture of a resource pack.
+    pub fn texture<T: Into<Cow<'static, str>>>(path: T) -> Self {
+        ObjectPlayer {
+            name: None,
+            id: None,
+            texture: Some(path.into()),
+            properties: vec![],
+        }
+    }
+    /// Creates a [ObjectPlayer] from a player's skin properties.
+    /// * `value` - A [texture data json](https://minecraft.wiki/w/Mojang_API#Query_player's_skin_and_cape) encoded in Base64
+    /// * `signature` - An optional Mojang's signature, also encoded in Base64
+    pub fn property<T: Into<Cow<'static, str>>, R: Into<Cow<'static, str>>>(
+        value: T,
+        signature: Option<R>,
+    ) -> Self {
+        ObjectPlayer {
+            name: None,
+            id: None,
+            texture: None,
+            properties: vec![PlayerProperties {
+                name: Cow::Borrowed("textures"),
+                value: value.into(),
+                signature: signature.map(Into::into),
+            }],
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct PlayerProperties {
+    pub name: Cow<'static, str>,
+    pub value: Cow<'static, str>,
+    pub signature: Option<Cow<'static, str>>,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub enum Resolvable {
+    /// The selector must only accept 1 target
+    /// #### Needs [resolution](TextComponent::resolve)
+    #[cfg_attr(feature = "serde", serde(rename = "score"))]
+    Scoreboard {
+        #[cfg_attr(feature = "serde", serde(rename = "name"))]
+        selector: Cow<'static, str>,
+        objective: Cow<'static, str>,
+    },
+    /// #### Needs [resolution](TextComponent::resolve)
+    #[cfg_attr(feature = "serde", serde(untagged))]
+    Entity {
+        selector: Cow<'static, str>,
+        separator: Box<TextComponent>,
+    },
+    /// #### Needs [resolution](TextComponent::resolve)
+    #[cfg_attr(feature = "serde", serde(untagged))]
+    NBT {
+        #[cfg_attr(feature = "serde", serde(rename = "nbt"))]
+        path: Cow<'static, str>,
+        // This meants to represent that this component should be
+        // replaced with the one inside the nbt selected if possible
+        interpret: Option<bool>,
+        separator: Box<TextComponent>,
+        #[cfg_attr(feature = "serde", serde(flatten))]
+        source: NbtSource,
+    },
+}
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+pub enum NbtSource {
+    Entity(Cow<'static, str>),
+    Block(Cow<'static, str>),
+    Storage(Cow<'static, str>),
+}
+impl NbtSource {
+    /// Creates a [NbtSource] from a entity selector.
+    pub fn entity<T: Into<Cow<'static, str>>>(selector: T) -> Self {
+        NbtSource::Entity(selector.into())
+    }
+    /// Creates a [NbtSource] from a block cordinates.
+    pub fn block(x: i32, y: i32, z: i32) -> Self {
+        NbtSource::Block(Cow::Owned(format!("{x} {y} {z}")))
+    }
+    /// Creates a [NbtSource] from a Nbt Storage identifier.
+    pub fn storage<T: Into<Cow<'static, str>>>(identifier: T) -> Self {
+        NbtSource::Storage(identifier.into())
+    }
+}
+
+impl From<Object> for TextComponent {
+    fn from(value: Object) -> Self {
+        TextComponent {
+            content: Content::Object(value),
+            children: Vec::new(),
+            format: Format::new(),
+            interactions: Interactivity::new(),
+        }
+    }
+}
+impl From<ObjectPlayer> for TextComponent {
+    fn from(value: ObjectPlayer) -> Self {
+        TextComponent {
+            content: Content::Object(Object::Player {
+                player: value,
+                hat: true,
+            }),
+            children: Vec::new(),
+            format: Format::new(),
+            interactions: Interactivity::new(),
+        }
+    }
+}
+impl From<Resolvable> for TextComponent {
+    fn from(value: Resolvable) -> Self {
+        TextComponent {
+            content: Content::Resolvable(value),
+            children: Vec::new(),
+            format: Format::new(),
+            interactions: Interactivity::new(),
+        }
+    }
+}
