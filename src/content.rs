@@ -1,3 +1,5 @@
+#[cfg(feature = "custom")]
+use crate::custom::CustomData;
 use crate::{
     TextComponent, format::Format, interactivity::Interactivity, translation::TranslatedMessage,
 };
@@ -11,6 +13,9 @@ use std::borrow::Cow;
 pub enum Content {
     Text(Cow<'static, str>),
     Keybind(Cow<'static, str>),
+    /// #### Needs [resolution](TextComponent::resolve)
+    #[cfg(feature = "custom")]
+    Custom(CustomData),
     #[cfg_attr(feature = "serde", serde(untagged))]
     Translate(TranslatedMessage),
     #[cfg_attr(feature = "serde", serde(untagged))]

@@ -1,3 +1,5 @@
+#[cfg(feature = "custom")]
+use crate::custom::CustomContent;
 use crate::{
     content::{Content, NbtSource, Object, ObjectPlayer, Resolvable},
     format::{Color, Format},
@@ -267,6 +269,16 @@ impl TextComponent {
                 source,
             }),
             children: Vec::new(),
+            format: Format::new(),
+            interactions: Interactivity::new(),
+        }
+    }
+
+    #[cfg(feature = "custom")]
+    pub fn custom<T: CustomContent>(content: T) -> TextComponent {
+        TextComponent {
+            content: Content::Custom(content.as_data()),
+            children: vec![],
             format: Format::new(),
             interactions: Interactivity::new(),
         }

@@ -1,8 +1,9 @@
+use crate::TextComponent;
+#[cfg(feature = "custom")]
+use crate::custom::CustomData;
 #[cfg(feature = "serde")]
 use serde::Serialize;
 use std::borrow::Cow;
-
-use crate::TextComponent;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
@@ -73,11 +74,8 @@ pub enum ClickEvent {
     ShowDialog {
         dialog: Cow<'static, str>,
     },
-    Custom {
-        id: Cow<'static, str>,
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        payload: Option<Cow<'static, str>>,
-    },
+    #[cfg(feature = "custom")]
+    Custom(CustomData),
 }
 impl ClickEvent {
     /// Creates a [ClickEvent] that opens a url when triggered.

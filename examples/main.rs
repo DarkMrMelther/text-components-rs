@@ -1,5 +1,8 @@
+use chrono::Utc;
 #[cfg(feature = "serde")]
 use serde::Serialize;
+#[cfg(feature = "custom")]
+use text_components::custom::{CustomContent, CustomData, CustomRegistry, Payload};
 #[cfg(feature = "nbt")]
 use text_components::nbt::{NbtBuilder, ToSNBT};
 use text_components::{
@@ -49,10 +52,47 @@ impl TextResolutor for EmptyResolutor {
             }
         }
     }
+    #[cfg(feature = "custom")]
+    fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent> {
+        if data.id == "time" {
+            return Some(TimeContent.resolve((), Payload::Empty));
+        }
+        None
+    }
+}
+#[cfg(feature = "custom")]
+impl CustomRegistry for EmptyResolutor {
+    type Data = ();
+
+    fn register_content<T: CustomContent>(&mut self, _id: &'static str, _content: T) {
+        todo!()
+    }
+
+    fn get_content(&self, _id: String) -> Box<dyn CustomContent<Reg = Self>> {
+        Box::new(TimeContent)
+    }
 }
 
 const CONTENT: Translation<8> = Translation("content");
 const RESOLUBLE: Translation<4> = Translation("resoluble");
+
+#[cfg(feature = "custom")]
+struct TimeContent;
+#[cfg(feature = "custom")]
+impl CustomContent for TimeContent {
+    type Reg = EmptyResolutor;
+
+    fn as_data(&self) -> CustomData {
+        CustomData {
+            id: std::borrow::Cow::Borrowed("time"),
+            payload: Payload::Empty,
+        }
+    }
+
+    fn resolve(&self, _data: (), _payload: Payload) -> TextComponent {
+        TextComponent::plain(Utc::now().format("%H:%M").to_string())
+    }
+}
 
 fn main() {
     let component = CONTENT
@@ -70,7 +110,7 @@ fn main() {
         ])
         .color(Color::Green)
         .bold(true)
-        .add_child(
+        .add_children(vec![
             RESOLUBLE
                 .message([
                     ObjectPlayer::name("MrMelther").reset(),
@@ -80,7 +120,11 @@ fn main() {
                         .reset(),
                 ])
                 .color_hex("#6f00ff"),
-        );
+            #[cfg(feature = "custom")]
+            "\n Custom: ".color_hex("#6f00ff"),
+            #[cfg(feature = "custom")]
+            TimeContent.reset(),
+        ]);
 
     println!("\nDebug:\n{:?}", component);
     #[cfg(feature = "serde")]

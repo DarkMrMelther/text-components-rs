@@ -1,3 +1,5 @@
+#[cfg(feature = "custom")]
+use crate::custom::CustomData;
 use crate::{
     TextComponent,
     content::{Content, Object, Resolvable},
@@ -59,6 +61,8 @@ const OBFUSCATION_CHARS: [char; 822] = [
 pub trait TextResolutor {
     type TM: TranslationManager;
     fn resolve_content(&self, resolvable: &Resolvable) -> TextComponent;
+    #[cfg(feature = "custom")]
+    fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent>;
     fn translation_manager(&self) -> Option<&Self::TM> {
         None
     }
@@ -126,6 +130,16 @@ impl TextComponent {
                     scoreboard => scoreboard.clone(),
                 };
                 let mut resolved = resolutor.resolve_content(&resolvable);
+                resolved.children.append(&mut children);
+                resolved.format = resolved.format.mix(&self.format);
+                resolved.interactions.mix(interactions);
+                resolved
+            }
+            #[cfg(feature = "custom")]
+            Content::Custom(data) => {
+                let mut resolved = resolutor
+                    .resolve_custom(data)
+                    .unwrap_or(TextComponent::new());
                 resolved.children.append(&mut children);
                 resolved.format = resolved.format.mix(&self.format);
                 resolved.interactions.mix(interactions);
@@ -215,6 +229,8 @@ impl TextBuilder {
                 String::from("[Head]").into()
             }
             Content::Resolvable(_) => String::from("[Resolvable]").into(), // Just in case ;)
+            #[cfg(feature = "custom")]
+            Content::Custom { .. } => String::from("[Custom]").into(),
         }
     }
 }

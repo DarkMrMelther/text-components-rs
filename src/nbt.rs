@@ -1,3 +1,5 @@
+#[cfg(feature = "custom")]
+use crate::custom::Payload;
 use crate::{
     TextComponent,
     build::{BuildTarget, TextResolutor},
@@ -354,14 +356,22 @@ impl ClickEvent {
                 values.push(("action".into(), "show_dialog".into()));
                 values.push(("dialog".into(), dialog.to_nbt_tag()));
             }
-            ClickEvent::Custom { id, payload } => {
+            #[cfg(feature = "custom")]
+            ClickEvent::Custom(data) => {
                 values.push(("action".into(), "custom".into()));
-                values.push(("id".into(), id.to_nbt_tag()));
-                if let Some(payload) = payload {
-                    values.push(("payload".into(), payload.to_nbt_tag()));
+                values.push(("id".into(), data.id.to_nbt_tag()));
+                if !data.payload.is_empty() {
+                    values.push(("payload".into(), data.payload.to_nbt_tag()));
                 }
             }
         };
         NbtTag::Compound(NbtCompound::from_values(values))
+    }
+}
+
+#[cfg(feature = "custom")]
+impl Payload {
+    fn to_nbt_tag(&self) -> NbtTag {
+        NbtTag::Byte(1)
     }
 }
