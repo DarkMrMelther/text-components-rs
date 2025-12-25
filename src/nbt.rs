@@ -1,7 +1,7 @@
 #[cfg(feature = "custom")]
 use crate::custom::Payload;
 use crate::{
-    TextComponent,
+    Modifier, TextComponent,
     build::{BuildTarget, TextResolutor},
     content::{Content, Object},
     format::{Color, Format},
@@ -38,6 +38,117 @@ impl BuildTarget for NbtBuilder {
             ));
         }
         Nbt::Some(BaseNbt::new("", NbtCompound::from_values(items)))
+    }
+}
+
+impl TextComponent {
+    pub fn from_snbt<T: Into<NbtTag>>(tag: T) -> Self {
+        let tag = tag.into();
+        match tag {
+            NbtTag::Byte(n) => n
+                .to_string()
+                .color(Color::Gold)
+                .add_child("b".color(Color::Red)),
+            NbtTag::Short(n) => n
+                .to_string()
+                .color(Color::Gold)
+                .add_child("s".color(Color::Red)),
+            NbtTag::Int(n) => n.to_string().color(Color::Gold),
+            NbtTag::Long(n) => n
+                .to_string()
+                .color(Color::Gold)
+                .add_child("l".color(Color::Red)),
+            NbtTag::Float(n) => format!("{:.1}", n)
+                .color(Color::Gold)
+                .add_child("f".color(Color::Red)),
+            NbtTag::Double(n) => format!("{:.1}", n)
+                .color(Color::Gold)
+                .add_child("d".color(Color::Red)),
+            NbtTag::ByteArray(items) => {
+                let component = "["
+                    .color(Color::White)
+                    .add_children(vec!["B".color(Color::Red), "; ".into()]);
+                let mut children = vec![];
+                for (i, n) in items.iter().enumerate() {
+                    children.push(
+                        n.to_string()
+                            .color(Color::Gold)
+                            .add_child("b".color(Color::Red)),
+                    );
+                    if i + 1 != items.len() {
+                        children.push(", ".into());
+                    }
+                }
+                children.push(TextComponent::plain("]"));
+                component.add_children(children)
+            }
+            NbtTag::String(string) => {
+                "\"".add_children(vec![string.to_string().color(Color::Green), "\"".into()])
+            }
+            NbtTag::List(nbt_list) => {
+                let component = "[".color(Color::White);
+                let mut children = vec![];
+                let mut i = 0;
+                for tag in nbt_list.as_nbt_tags() {
+                    children.push(TextComponent::from_snbt(tag));
+                    if i + 1 != nbt_list.as_nbt_tags().len() {
+                        children.push(", ".into());
+                    }
+                    i += 1;
+                }
+                children.push(TextComponent::plain("]"));
+                component.add_children(children)
+            }
+            NbtTag::Compound(compound) => {
+                let component = "{".color(Color::White);
+                let mut children = vec![];
+                let mut i = 0;
+                let len = compound.len();
+                for (name, tag) in compound {
+                    children.push(name.to_string().color(Color::Aqua));
+                    children.push(": ".into());
+                    children.push(TextComponent::from_snbt(tag));
+                    if i + 1 != len {
+                        children.push(", ".into());
+                    }
+                    i += 1;
+                }
+                children.push(TextComponent::plain("}"));
+                component.add_children(children)
+            }
+            NbtTag::IntArray(items) => {
+                let component = "["
+                    .color(Color::White)
+                    .add_children(vec!["I".color(Color::Red), "; ".into()]);
+                let mut children = vec![];
+                for (i, n) in items.iter().enumerate() {
+                    children.push(n.to_string().color(Color::Gold));
+                    if i + 1 != items.len() {
+                        children.push(", ".into());
+                    }
+                }
+                children.push(TextComponent::plain("]"));
+                component.add_children(children)
+            }
+            NbtTag::LongArray(items) => {
+                let component = "["
+                    .color(Color::White)
+                    .add_children(vec!["L".color(Color::Red), "; ".into()]);
+                let mut children = vec![];
+                for (i, n) in items.iter().enumerate() {
+                    children.push(
+                        n.to_string()
+                            .color(Color::Gold)
+                            .add_child("l".color(Color::Red)),
+                    );
+                    if i + 1 != items.len() {
+                        children.push(", ".into());
+                    }
+                }
+                children.push(TextComponent::plain("]"));
+                component.add_children(children)
+            }
+        }
     }
 }
 
