@@ -1,6 +1,4 @@
 use crate::TextComponent;
-#[cfg(feature = "serde")]
-use serde::Serialize;
 use std::borrow::Cow;
 
 pub trait TranslationManager {
@@ -24,7 +22,7 @@ pub trait TranslationManager {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct TranslatedMessage {
     #[cfg_attr(feature = "serde", serde(rename = "translate"))]
     pub key: Cow<'static, str>,

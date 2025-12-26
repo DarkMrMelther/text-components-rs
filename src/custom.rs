@@ -1,10 +1,8 @@
 use crate::TextComponent;
-#[cfg(feature = "serde")]
-use serde::Serialize;
 use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct CustomData {
     pub id: Cow<'static, str>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Payload::is_empty"))]
@@ -12,7 +10,7 @@ pub struct CustomData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub enum Payload {
     Empty,
     // More payload data

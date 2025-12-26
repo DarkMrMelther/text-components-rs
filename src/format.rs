@@ -1,10 +1,8 @@
 use colored::{ColoredString, Colorize};
-#[cfg(feature = "serde")]
-use serde::Serialize;
 use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct Format {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub color: Option<Color>,
@@ -15,13 +13,13 @@ pub struct Format {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub italic: Option<bool>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub underline: Option<bool>,
+    pub underlined: Option<bool>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub strikethrough: Option<bool>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub obfuscated: Option<bool>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub shadow_color: Option<u32>,
+    pub shadow_color: Option<i32>,
 }
 
 impl Default for Format {
@@ -36,11 +34,21 @@ impl Format {
             font: None,
             bold: None,
             italic: None,
-            underline: None,
+            underlined: None,
             strikethrough: None,
             obfuscated: None,
             shadow_color: None,
         }
+    }
+    pub fn is_none(&self) -> bool {
+        self.color.is_none()
+            && self.font.is_none()
+            && self.bold.is_none()
+            && self.italic.is_none()
+            && self.underlined.is_none()
+            && self.strikethrough.is_none()
+            && self.obfuscated.is_none()
+            && self.shadow_color.is_none()
     }
     pub fn color(mut self, color: Color) -> Self {
         self.color = Some(color);
@@ -74,8 +82,8 @@ impl Format {
         self.italic = Some(value);
         self
     }
-    pub fn underline(mut self, value: bool) -> Self {
-        self.underline = Some(value);
+    pub fn underlined(mut self, value: bool) -> Self {
+        self.underlined = Some(value);
         self
     }
     pub fn strikethrough(mut self, value: bool) -> Self {
@@ -88,7 +96,7 @@ impl Format {
     }
     pub fn shadow_color(mut self, a: u8, r: u8, g: u8, b: u8) -> Self {
         self.shadow_color =
-            Some(((a as u32) << 24) + ((r as u32) << 16) + ((g as u32) << 8) + (b as u32));
+            Some((((a as u32) << 24) + ((r as u32) << 16) + ((g as u32) << 8) + (b as u32)) as i32);
         self
     }
     pub fn reset(mut self) -> Self {
@@ -96,7 +104,7 @@ impl Format {
         self.font = Some(Cow::Borrowed("minecraft:default"));
         self.bold = Some(false);
         self.italic = Some(false);
-        self.underline = Some(false);
+        self.underlined = Some(false);
         self.strikethrough = Some(false);
         self.obfuscated = Some(false);
         self.shadow_color = None;
@@ -124,10 +132,10 @@ impl Format {
             } else {
                 other.italic.clone()
             },
-            underline: if self.underline.is_some() {
-                self.underline.clone()
+            underlined: if self.underlined.is_some() {
+                self.underlined.clone()
             } else {
-                other.underline.clone()
+                other.underlined.clone()
             },
             strikethrough: if self.strikethrough.is_some() {
                 self.strikethrough.clone()
@@ -149,7 +157,7 @@ impl Format {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Color {
     Black,

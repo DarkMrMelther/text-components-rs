@@ -224,7 +224,7 @@ impl TextBuilder {
                     return format!("[Head: {}]", name).into();
                 }
                 if let Some(id) = &player.id {
-                    return format!("[Head: {}]", id).into();
+                    return format!("[Head: {:?}]", id).into();
                 }
                 String::from("[Head]").into()
             }
@@ -305,7 +305,7 @@ impl BuildTarget for PrettyTextBuilder {
         if let Some(true) = component.format.italic {
             final_text = final_text.italic();
         }
-        if let Some(true) = component.format.underline {
+        if let Some(true) = component.format.underlined {
             final_text = final_text.underline();
         }
         if let Some(true) = component.format.strikethrough {
@@ -325,7 +325,15 @@ impl BuildTarget for PrettyTextBuilder {
             component
                 .children
                 .iter()
-                .map(|child| self.build_component(resolutor, child).to_string())
+                .map(|child| {
+                    let child = TextComponent {
+                        content: child.content.clone(),
+                        children: child.children.clone(),
+                        format: child.format.mix(&component.format),
+                        interactions: child.interactions.clone(),
+                    };
+                    self.build_component(resolutor, &child).to_string()
+                })
                 .collect::<Vec<String>>()
                 .concat()
         )

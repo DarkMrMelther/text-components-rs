@@ -3,12 +3,10 @@ use crate::custom::CustomData;
 use crate::{
     TextComponent, format::Format, interactivity::Interactivity, translation::TranslatedMessage,
 };
-#[cfg(feature = "serde")]
-use serde::Serialize;
 use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum Content {
     Text(Cow<'static, str>),
@@ -32,7 +30,7 @@ impl From<String> for Content {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub enum Object {
     Atlas {
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -46,12 +44,12 @@ pub enum Object {
     },
 }
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct ObjectPlayer {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name: Option<Cow<'static, str>>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub id: Option<Cow<'static, str>>,
+    pub id: Option<[i32; 4]>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub texture: Option<Cow<'static, str>>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
@@ -68,10 +66,10 @@ impl ObjectPlayer {
         }
     }
     /// Creates a [ObjectPlayer] from the id of a player.
-    pub fn id<T: Into<Cow<'static, str>>>(id: T) -> Self {
+    pub fn id(id: [i32; 4]) -> Self {
         ObjectPlayer {
             name: None,
-            id: Some(id.into()),
+            id: Some(id),
             texture: None,
             properties: vec![],
         }
@@ -106,7 +104,7 @@ impl ObjectPlayer {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct PlayerProperties {
     pub name: Cow<'static, str>,
     pub value: Cow<'static, str>,
@@ -114,7 +112,7 @@ pub struct PlayerProperties {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub enum Resolvable {
     /// The selector must only accept 1 target
     /// #### Needs [resolution](TextComponent::resolve)
@@ -143,8 +141,27 @@ pub enum Resolvable {
         source: NbtSource,
     },
 }
+impl Resolvable {
+    pub fn entity_separator() -> Box<TextComponent> {
+        Box::new(TextComponent {
+            content: Content::Text(Cow::Borrowed(", ")),
+            format: Format {
+                color: Some(crate::format::Color::Gray),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+    }
+    pub fn nbt_separator() -> Box<TextComponent> {
+        Box::new(TextComponent {
+            content: Content::Text(Cow::Borrowed(", ")),
+            ..Default::default()
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum NbtSource {
     Entity(Cow<'static, str>),

@@ -18,6 +18,42 @@ pub struct NbtBuilder;
 impl BuildTarget for NbtBuilder {
     type Result = Nbt;
     fn build_component<R: TextResolutor>(&self, resolutor: &R, component: &TextComponent) -> Nbt {
+        if component.interactions.is_none()
+            && component.format.is_none()
+            && component.children.is_empty()
+        {
+            if let Content::Text(str) = &component.content {
+                return Nbt::Some(BaseNbt::new(
+                    "",
+                    NbtCompound::from_values(vec![(Mutf8String::new(), str.to_nbt_tag())]),
+                ));
+            } else {
+                return Nbt::None;
+            }
+        }
+
+        if let Content::Text(str) = &component.content
+            && str.is_empty()
+            && !component.children.is_empty()
+        {
+            return Nbt::Some(BaseNbt::new(
+                "",
+                NbtCompound::from_values(vec![(
+                    "".into(),
+                    NbtTag::List(NbtList::Compound(
+                        component
+                            .children
+                            .iter()
+                            .map(|nbt| match self.build_component(resolutor, nbt) {
+                                Nbt::Some(base) => base.as_compound(),
+                                Nbt::None => NbtCompound::from_values(vec![]),
+                            })
+                            .collect(),
+                    )),
+                )]),
+            ));
+        }
+
         let mut items = vec![];
         component.content.to_compound(&mut items, self, resolutor);
         component.format.to_compound(&mut items);
@@ -42,7 +78,7 @@ impl BuildTarget for NbtBuilder {
 }
 
 impl TextComponent {
-    pub fn from_snbt<T: Into<NbtTag>>(tag: T) -> Self {
+    pub fn nbt_display<T: Into<NbtTag>>(tag: T) -> Self {
         let tag = tag.into();
         match tag {
             NbtTag::Byte(n) => n
@@ -90,7 +126,7 @@ impl TextComponent {
                 let mut children = vec![];
                 let mut i = 0;
                 for tag in nbt_list.as_nbt_tags() {
-                    children.push(TextComponent::from_snbt(tag));
+                    children.push(TextComponent::nbt_display(tag));
                     if i + 1 != nbt_list.as_nbt_tags().len() {
                         children.push(", ".into());
                     }
@@ -105,9 +141,13 @@ impl TextComponent {
                 let mut i = 0;
                 let len = compound.len();
                 for (name, tag) in compound {
-                    children.push(name.to_string().color(Color::Aqua));
-                    children.push(": ".into());
-                    children.push(TextComponent::from_snbt(tag));
+                    if !name.is_empty() {
+                        children.push(name.to_string().color(Color::Aqua));
+                        children.push(": ".into());
+                    } else if len == 1 {
+                        return TextComponent::nbt_display(tag);
+                    }
+                    children.push(TextComponent::nbt_display(tag));
                     if i + 1 != len {
                         children.push(", ".into());
                     }
@@ -176,6 +216,13 @@ impl ToSNBT for BaseNbt {
 }
 impl ToSNBT for NbtCompound {
     fn to_snbt(&self) -> String {
+        if self.len() == 1 {
+            for (name, tag) in self.iter() {
+                if name.is_empty() {
+                    return tag.to_snbt();
+                }
+            }
+        }
         let mut snbt = vec![];
         for (name, tag) in self.iter() {
             let mut child = String::new();
@@ -261,7 +308,7 @@ impl Content {
                 compound.push(("object".into(), "player".into()));
                 let mut inner = vec![];
                 if let Some(id) = &player.id {
-                    inner.push(("id".into(), id.to_nbt_tag()));
+                    inner.push(("id".into(), NbtTag::IntArray(id.to_vec())));
                 }
                 if let Some(name) = &player.name {
                     inner.push(("name".into(), name.to_nbt_tag()));
@@ -360,8 +407,8 @@ impl Format {
         if let Some(value) = self.italic {
             compound.push(("italic".into(), NbtTag::Byte(value as i8)));
         }
-        if let Some(value) = self.underline {
-            compound.push(("underline".into(), NbtTag::Byte(value as i8)));
+        if let Some(value) = self.underlined {
+            compound.push(("underlined".into(), NbtTag::Byte(value as i8)));
         }
         if let Some(value) = self.strikethrough {
             compound.push(("strikethrough".into(), NbtTag::Byte(value as i8)));
@@ -427,7 +474,7 @@ impl HoverEvent {
                     ("uuid".into(), NbtTag::List(NbtList::Int(uuid.to_vec()))),
                 ];
                 if let Some(name) = name {
-                    compound.push(("name".into(), name.to_nbt_tag()));
+                    compound.push(("name".into(), name.build(resolutor, NbtBuilder).into()));
                 }
                 NbtTag::Compound(NbtCompound::from_values(compound))
             }

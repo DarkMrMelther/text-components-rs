@@ -6,8 +6,6 @@ use crate::{
     interactivity::{ClickEvent, HoverEvent, Interactivity},
     translation::TranslatedMessage,
 };
-#[cfg(feature = "serde")]
-use ::serde::Serialize;
 use std::borrow::Cow;
 
 pub mod build;
@@ -18,6 +16,7 @@ pub mod format;
 pub mod interactivity;
 #[cfg(feature = "nbt")]
 pub mod nbt;
+pub mod parse;
 pub mod translation;
 
 /// A recursive rich text format with interaction capabilities.
@@ -77,7 +76,7 @@ pub mod translation;
 /// component.to_pretty_string(resolutor);
 /// ```
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct TextComponent {
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub content: Content,
@@ -326,7 +325,7 @@ pub trait Modifier {
     /// Makes this component *italic*
     fn italic(self, value: bool) -> TextComponent;
     /// Makes this component underlined
-    fn underline(self, value: bool) -> TextComponent;
+    fn underlined(self, value: bool) -> TextComponent;
     /// Makes this component ~~strikethrough~~
     fn strikethrough(self, value: bool) -> TextComponent;
     /// Makes this component obfuscated
@@ -398,9 +397,9 @@ impl<T: Into<TextComponent> + Sized> Modifier for T {
         component
     }
     #[inline]
-    fn underline(self, value: bool) -> TextComponent {
+    fn underlined(self, value: bool) -> TextComponent {
         let mut component = self.into();
-        component.format = component.format.underline(value);
+        component.format = component.format.underlined(value);
         component
     }
     #[inline]

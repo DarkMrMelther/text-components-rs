@@ -1,12 +1,10 @@
 use crate::TextComponent;
 #[cfg(feature = "custom")]
 use crate::custom::CustomData;
-#[cfg(feature = "serde")]
-use serde::Serialize;
 use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct Interactivity {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub insertion: Option<Cow<'static, str>>,
@@ -36,6 +34,9 @@ impl Interactivity {
             hover: None,
         }
     }
+    pub fn is_none(&self) -> bool {
+        self.insertion.is_none() && self.click.is_none() && self.hover.is_none()
+    }
     pub fn mix(&mut self, other: Self) {
         if self.insertion.is_none() && other.insertion.is_some() {
             self.insertion = other.insertion
@@ -50,7 +51,7 @@ impl Interactivity {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(tag = "action", rename_all = "snake_case"))]
 pub enum ClickEvent {
     OpenUrl {
@@ -66,7 +67,7 @@ pub enum ClickEvent {
         command: Cow<'static, str>,
     },
     ChangePage {
-        page: u32,
+        page: i32,
     },
     CopyToClipboard {
         value: Cow<'static, str>,
@@ -100,7 +101,7 @@ impl ClickEvent {
     }
     /// Creates a [ClickEvent] that changes the page of a book when triggered.
     pub fn change_page(page: u32) -> Self {
-        ClickEvent::ChangePage { page }
+        ClickEvent::ChangePage { page: page as i32 }
     }
     /// Creates a [ClickEvent] that copies it's content to the clipboard when triggered.
     pub fn copy_to_clipboard<T: Into<Cow<'static, str>>>(value: T) -> Self {
@@ -118,7 +119,7 @@ impl ClickEvent {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(tag = "action", rename_all = "snake_case"))]
 pub enum HoverEvent {
     ShowText {
@@ -133,7 +134,7 @@ pub enum HoverEvent {
     },
     ShowEntity {
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        name: Option<Cow<'static, str>>,
+        name: Option<Box<TextComponent>>,
         id: Cow<'static, str>,
         uuid: [i32; 4],
     },
@@ -164,13 +165,13 @@ impl HoverEvent {
     /// * `id` - The id of the entity's type
     /// * `uuid` - The id of the targeted entity
     /// * `name` - If [Some] the name to display
-    pub fn show_entity<T: Into<Cow<'static, str>>, R: Into<Cow<'static, str>>>(
+    pub fn show_entity<T: Into<Cow<'static, str>>, R: Into<TextComponent>>(
         id: T,
         uuid: [i32; 4],
         name: Option<R>,
     ) -> Self {
         HoverEvent::ShowEntity {
-            name: name.map(Into::into),
+            name: name.map(|r| Box::new(r.into())),
             id: id.into(),
             uuid,
         }
