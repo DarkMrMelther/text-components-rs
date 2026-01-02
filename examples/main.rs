@@ -1,6 +1,12 @@
+#[cfg(feature = "custom")]
 use chrono::Utc;
 #[cfg(feature = "serde")]
 use serde::Serialize;
+#[cfg(feature = "nbt")]
+use simdnbt::{
+    ToNbtTag,
+    owned::{BaseNbt, Nbt, NbtCompound, NbtTag},
+};
 #[cfg(feature = "custom")]
 use text_components::custom::{CustomContent, CustomData, CustomRegistry, Payload};
 #[cfg(feature = "nbt")]
@@ -9,13 +15,14 @@ use text_components::{
     Modifier, TextComponent,
     build::TextResolutor,
     content::{NbtSource, ObjectPlayer, Resolvable},
+    fmt::set_display_resolutor,
     format::Color,
     interactivity::{ClickEvent, HoverEvent},
-    translation::{TranslatedMessage, Translation, TranslationManager},
+    translation::{TranslatedMessage, Translation},
 };
 
 struct EmptyResolutor;
-impl TranslationManager for EmptyResolutor {
+impl TextResolutor for EmptyResolutor {
     fn translate(&self, key: &str) -> Option<String> {
         match key {
             "content" => Some(String::from(
@@ -30,12 +37,6 @@ impl TranslationManager for EmptyResolutor {
             _ => None,
         }
     }
-}
-impl TextResolutor for EmptyResolutor {
-    type TM = Self;
-    fn translation_manager(&self) -> Option<&Self> {
-        Some(self)
-    }
     fn resolve_content(&self, resolvable: &Resolvable) -> TextComponent {
         match resolvable {
             Resolvable::Scoreboard { .. } => TextComponent::plain("5"),
@@ -47,6 +48,21 @@ impl TextResolutor for EmptyResolutor {
                     [1, 1, 1, 1],
                     Some("MrMelther"),
                 )),
+            #[cfg(feature = "nbt")]
+            Resolvable::NBT { .. } => TextComponent::plain(
+                Nbt::Some(BaseNbt::new(
+                    "",
+                    NbtCompound::from_values(vec![
+                        ("base".into(), NbtTag::Double(3.)),
+                        (
+                            "id".into(),
+                            "minecraft:entity_interaction_range".to_nbt_tag(),
+                        ),
+                    ]),
+                ))
+                .to_snbt(),
+            ),
+            #[cfg(not(feature = "nbt"))]
             Resolvable::NBT { .. } => {
                 TextComponent::plain("{base:3.0d,id:\"minecraft:entity_interaction_range\"}")
             }
@@ -95,6 +111,19 @@ impl CustomContent for TimeContent {
 }
 
 fn main() {
+    set_display_resolutor(&EmptyResolutor);
+    let mut resolubles = RESOLUBLE
+        .message([
+            ObjectPlayer::name("MrMelther").reset(),
+            TextComponent::scoreboard("MrMelther", "objective").reset(),
+            TextComponent::entity("@p", None).reset(),
+            TextComponent::nbt("attributes[2]", NbtSource::entity("@p"), false, None).reset(),
+        ])
+        .color_hex("#6f00ff");
+
+    #[cfg(feature = "custom")]
+    (&mut resolubles).add_children(vec!["\n Custom: ".into(), TimeContent.reset()]);
+
     let component = CONTENT
         .message([
             "This text is Blue!".reset().color(Color::Blue),
@@ -110,21 +139,7 @@ fn main() {
         ])
         .color(Color::Green)
         .bold(true)
-        .add_children(vec![
-            RESOLUBLE
-                .message([
-                    ObjectPlayer::name("MrMelther").reset(),
-                    TextComponent::scoreboard("MrMelther", "objective").reset(),
-                    TextComponent::entity("@p", None).reset(),
-                    TextComponent::nbt("attributes[2]", NbtSource::entity("@p"), false, None)
-                        .reset(),
-                ])
-                .color_hex("#6f00ff"),
-            #[cfg(feature = "custom")]
-            "\n Custom: ".color_hex("#6f00ff"),
-            #[cfg(feature = "custom")]
-            TimeContent.reset(),
-        ]);
+        .add_child(resolubles);
 
     println!("\nDebug:\n{:?}", component);
     #[cfg(feature = "serde")]
@@ -140,9 +155,6 @@ fn main() {
         "\nNBT (SNBT):\ntellraw @a {}",
         component.build(&EmptyResolutor, NbtBuilder).to_snbt()
     );
-    println!("\nText:\n{}", component.to_string(&EmptyResolutor));
-    println!(
-        "\nPretty Text:\n{}",
-        component.to_pretty_string(&EmptyResolutor)
-    );
+    println!("\nText:\n{}", component);
+    println!("\nPretty Text:\n{:p}", component);
 }

@@ -4,36 +4,11 @@ use simdnbt::{
 };
 use text_components::{
     Modifier, TextComponent,
-    build::TextResolutor,
+    build::NoResolutor,
     format::Color,
     interactivity::{ClickEvent, HoverEvent},
     nbt::{NbtBuilder, ToSNBT},
-    translation::TranslationManager,
 };
-
-struct Empty;
-impl TranslationManager for Empty {
-    fn translate(&self, _key: &str) -> Option<String> {
-        None
-    }
-}
-impl TextResolutor for Empty {
-    type TM = Self;
-
-    fn resolve_content(
-        &self,
-        _resolvable: &text_components::content::Resolvable,
-    ) -> text_components::TextComponent {
-        todo!()
-    }
-
-    fn resolve_custom(
-        &self,
-        _data: &text_components::custom::CustomData,
-    ) -> Option<text_components::TextComponent> {
-        todo!()
-    }
-}
 
 fn main() -> Result<(), String> {
     let nbt = Nbt::Some(BaseNbt::new(
@@ -50,20 +25,21 @@ fn main() -> Result<(), String> {
     let component = TextComponent::nbt_display(nbt);
     println!(
         "tellraw @p {}",
-        component.build(&Empty, NbtBuilder).to_snbt()
+        component.build(&NoResolutor, NbtBuilder).to_snbt()
     );
-    println!("{}", component.to_pretty_string(&Empty));
+    println!("{:p}", component);
 
     let nbt = "Holly molly I can get TextComponents from NBTs!"
-        .color(Color::Blue)
+        .color(Color::Red)
         .add_children(vec![
             "\n This has a Hover Event!"
-                .hover_event(HoverEvent::show_text("This is a hover event")),
+                .hover_event(HoverEvent::show_text("This is a hover event"))
+                .color(Color::Gold),
             "\n This has a ClickEvent!".click_event(ClickEvent::suggest_command(
                 "/tell \"Guys, I'm very happy!\"",
             )),
         ])
-        .build(&Empty, NbtBuilder);
+        .build(&NoResolutor, NbtBuilder);
     let nbt = match nbt {
         Nbt::Some(base_nbt) => base_nbt.as_compound().clone().to_nbt_tag(),
         Nbt::None => NbtTag::String(Mutf8String::new()),
@@ -72,6 +48,6 @@ fn main() -> Result<(), String> {
     let component =
         TextComponent::from_nbt(&nbt).ok_or(String::from("Cannot recompose the TextComponent!"))?;
     println!("{:?}", component);
-    println!("{}", component.to_pretty_string(&Empty));
+    println!("{:p}", component);
     Ok(())
 }

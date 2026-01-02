@@ -17,21 +17,11 @@ pub struct NbtBuilder;
 
 impl BuildTarget for NbtBuilder {
     type Result = Nbt;
-    fn build_component<R: TextResolutor>(&self, resolutor: &R, component: &TextComponent) -> Nbt {
-        if component.interactions.is_none()
-            && component.format.is_none()
-            && component.children.is_empty()
-        {
-            if let Content::Text(str) = &component.content {
-                return Nbt::Some(BaseNbt::new(
-                    "",
-                    NbtCompound::from_values(vec![(Mutf8String::new(), str.to_nbt_tag())]),
-                ));
-            } else {
-                return Nbt::None;
-            }
-        }
-
+    fn build_component<R: TextResolutor + ?Sized>(
+        &self,
+        resolutor: &R,
+        component: &TextComponent,
+    ) -> Nbt {
         if let Content::Text(str) = &component.content
             && str.is_empty()
             && !component.children.is_empty()
@@ -94,10 +84,10 @@ impl TextComponent {
                 .to_string()
                 .color(Color::Gold)
                 .add_child("l".color(Color::Red)),
-            NbtTag::Float(n) => format!("{:.1}", n)
+            NbtTag::Float(n) => format!("{:?}", n)
                 .color(Color::Gold)
                 .add_child("f".color(Color::Red)),
-            NbtTag::Double(n) => format!("{:.1}", n)
+            NbtTag::Double(n) => format!("{:?}", n)
                 .color(Color::Gold)
                 .add_child("d".color(Color::Red)),
             NbtTag::ByteArray(items) => {
@@ -208,7 +198,11 @@ impl ToSNBT for BaseNbt {
     fn to_snbt(&self) -> String {
         let mut child = String::new();
         if !self.name().is_empty() {
-            child = format!("{}:", self.name());
+            if self.name().to_str().contains(':') {
+                child = format!("\"{}\":", self.name());
+            } else {
+                child = format!("{}:", self.name());
+            }
         }
         child.push_str(&self.deref().to_snbt());
         child
@@ -218,7 +212,7 @@ impl ToSNBT for NbtCompound {
     fn to_snbt(&self) -> String {
         if self.len() == 1 {
             for (name, tag) in self.iter() {
-                if name.is_empty() {
+                if name.is_empty() || name.to_str() == "text" {
                     return tag.to_snbt();
                 }
             }
@@ -227,7 +221,11 @@ impl ToSNBT for NbtCompound {
         for (name, tag) in self.iter() {
             let mut child = String::new();
             if !name.is_empty() {
-                child = format!("{name}:");
+                if name.to_str().contains(':') {
+                    child = format!("\"{}\":", name);
+                } else {
+                    child = format!("{}:", name);
+                }
             }
             child.push_str(&tag.to_snbt());
             snbt.push(child);
@@ -242,8 +240,8 @@ impl ToSNBT for NbtTag {
             NbtTag::Short(n) => format!("{n}s"),
             NbtTag::Int(n) => n.to_string(),
             NbtTag::Long(n) => format!("{n}l"),
-            NbtTag::Float(n) => format!("{n}f"),
-            NbtTag::Double(n) => n.to_string(),
+            NbtTag::Float(n) => format!("{:?}f", n),
+            NbtTag::Double(n) => format!("{:?}d", n),
             NbtTag::ByteArray(items) => format!(
                 "[B;{}]",
                 items
@@ -254,10 +252,12 @@ impl ToSNBT for NbtTag {
             ),
             NbtTag::String(str) => format!(
                 "\"{}\"",
+                // TODO: Check escapable characters
                 str.to_string()
                     .replace('\\', "\\\\")
                     .replace('\n', "\\n")
-                    .replace('\"', "\\\"")
+                    .replace('"', "\\\"")
+                    .replace('\'', "\\'")
             ),
             NbtTag::List(items) => format!(
                 "[{}]",
@@ -290,7 +290,7 @@ impl ToSNBT for NbtTag {
 }
 
 impl Content {
-    fn to_compound<R: TextResolutor>(
+    fn to_compound<R: TextResolutor + ?Sized>(
         &self,
         compound: &mut Vec<(Mutf8String, NbtTag)>,
         target: &NbtBuilder,
@@ -392,7 +392,7 @@ impl Format {
                     Color::LightPurple => NbtTag::String("light_purple".into()),
                     Color::Yellow => NbtTag::String("yellow".into()),
                     Color::White => NbtTag::String("white".into()),
-                    Color::Hex(r, g, b) => {
+                    Color::Rgb(r, g, b) => {
                         NbtTag::String(format!("#{:02x}{:02x}{:02x}", r, g, b).into())
                     }
                 },
@@ -423,7 +423,7 @@ impl Format {
 }
 
 impl Interactivity {
-    fn to_compound<R: TextResolutor>(
+    fn to_compound<R: TextResolutor + ?Sized>(
         &self,
         resolutor: &R,
         compound: &mut Vec<(Mutf8String, NbtTag)>,
@@ -444,7 +444,7 @@ impl Interactivity {
 }
 
 impl HoverEvent {
-    fn to_nbt_tag<R: TextResolutor>(&self, resolutor: &R) -> NbtTag {
+    fn to_nbt_tag<R: TextResolutor + ?Sized>(&self, resolutor: &R) -> NbtTag {
         match self {
             HoverEvent::ShowText { value } => NbtTag::Compound(NbtCompound::from_values(vec![
                 ("action".into(), NbtTag::String("show_text".into())),

@@ -5,7 +5,7 @@ use crate::{
 };
 use std::borrow::Cow;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum Content {
@@ -100,6 +100,12 @@ impl ObjectPlayer {
                 signature: signature.map(Into::into),
             }],
         }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.name.is_none()
+            && self.id.is_none()
+            && self.texture.is_none()
+            && self.properties.is_empty()
     }
 }
 

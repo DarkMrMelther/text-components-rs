@@ -3,7 +3,7 @@ use crate::TextComponent;
 use crate::custom::CustomData;
 use std::borrow::Cow;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct Interactivity {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]

@@ -1,7 +1,7 @@
 use colored::{ColoredString, Colorize};
 use std::borrow::Cow;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct Format {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -19,7 +19,7 @@ pub struct Format {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub obfuscated: Option<bool>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub shadow_color: Option<i32>,
+    pub shadow_color: Option<i64>,
 }
 
 impl Default for Format {
@@ -55,23 +55,13 @@ impl Format {
         self
     }
     pub fn color_hex(mut self, color: &str) -> Self {
-        if color.starts_with('#')
-            && color.chars().count() == 7
-            && color[1..].find(|a: char| !a.is_ascii_hexdigit()) == None
-        {
-            let color = color.strip_prefix('#').unwrap();
-            let (r, color) = color.split_at(2);
-            let (g, b) = color.split_at(2);
-            self.color = Some(Color::Hex(
-                u8::from_str_radix(r, 16).unwrap(),
-                u8::from_str_radix(g, 16).unwrap(),
-                u8::from_str_radix(b, 16).unwrap(),
-            ));
+        if let Some(color) = Color::from_hex(color) {
+            self.color = Some(color);
         }
         self
     }
-    pub fn font<F: Into<String>>(mut self, font: F) -> Self {
-        self.font = Some(Cow::Owned(font.into()));
+    pub fn font<F: Into<Cow<'static, str>>>(mut self, font: F) -> Self {
+        self.font = Some(font.into());
         self
     }
     pub fn bold(mut self, value: bool) -> Self {
@@ -95,9 +85,11 @@ impl Format {
         self
     }
     pub fn shadow_color(mut self, a: u8, r: u8, g: u8, b: u8) -> Self {
-        self.shadow_color =
-            Some((((a as u32) << 24) + ((r as u32) << 16) + ((g as u32) << 8) + (b as u32)) as i32);
+        self.shadow_color = Some(Self::parse_shadow_color(a, r, g, b));
         self
+    }
+    pub fn parse_shadow_color(a: u8, r: u8, g: u8, b: u8) -> i64 {
+        (((a as u32) << 24) + ((r as u32) << 16) + ((g as u32) << 8) + (b as u32)) as i64
     }
     pub fn reset(mut self) -> Self {
         self.color = Some(Color::White);
@@ -160,25 +152,41 @@ impl Format {
 #[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Color {
+    Aqua,
     Black,
-    DarkBlue,
-    DarkGreen,
+    Blue,
     DarkAqua,
-    DarkRed,
+    DarkBlue,
+    DarkGray,
+    DarkGreen,
     DarkPurple,
+    DarkRed,
     Gold,
     Gray,
-    DarkGray,
-    Blue,
     Green,
-    Aqua,
-    Red,
     LightPurple,
-    Yellow,
+    Red,
     White,
-    Hex(u8, u8, u8),
+    Yellow,
+    Rgb(u8, u8, u8),
 }
 impl Color {
+    pub fn from_hex(color: &str) -> Option<Color> {
+        if color.starts_with('#')
+            && color.chars().count() == 7
+            && color[1..].find(|a: char| !a.is_ascii_hexdigit()) == None
+        {
+            let color = color.strip_prefix('#').unwrap();
+            let (r, color) = color.split_at(2);
+            let (g, b) = color.split_at(2);
+            return Some(Color::Rgb(
+                u8::from_str_radix(r, 16).unwrap(),
+                u8::from_str_radix(g, 16).unwrap(),
+                u8::from_str_radix(b, 16).unwrap(),
+            ));
+        }
+        None
+    }
     pub fn colorize_text<T: Into<String>>(&self, text: T) -> ColoredString {
         match self {
             Color::Black => text.into().black(),
@@ -197,7 +205,7 @@ impl Color {
             Color::LightPurple => text.into().bright_magenta(),
             Color::Yellow => text.into().bright_yellow(),
             Color::White => text.into().bright_white(),
-            Color::Hex(r, g, b) => text.into().truecolor(*r, *g, *b),
+            Color::Rgb(r, g, b) => text.into().truecolor(*r, *g, *b),
         }
     }
 }

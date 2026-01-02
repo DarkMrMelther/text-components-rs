@@ -2,7 +2,7 @@
 
 This is a library for easy implementation and usage of Minecraft's Text Components, designed for Java edition but extensible to match Bedrock's Components.
 
-### How to use
+### Usage
 
 You can make your first text component like this:
 
@@ -35,13 +35,32 @@ Once the component is ready to be sent or displayed only rests building it:
 ```rs
 component.build(resolutor, PrettyTextBuilder);
 // Equivalent of doing:
-component.to_pretty_string(resolutor);
+component.to_pretty(resolutor);
 ```
 
 If you want to use serde you will need to do this instead:
 
 ```rs
 component.resolve(resolutor).serialize(serializer);
+```
+
+### Displaying TextComponents
+
+TextComponent implements Display for easy logging, as you can see, a component
+needs to be resolved before building it into any format, by default it uses a static
+reference to NoResolutor, but can be changed to a custom one with:\
+(Resolutor must be static, or made inside the function call)
+
+```rs
+set_display_resolutor(&Resolutor);
+```
+
+A text component can be printed like a string like this:
+
+```rs
+println!("{}", component);
+// With format (pretty):
+println!("{:p}", component);
 ```
 
 ### Roadmap

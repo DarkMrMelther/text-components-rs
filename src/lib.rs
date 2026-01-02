@@ -12,6 +12,7 @@ pub mod build;
 pub mod content;
 #[cfg(feature = "custom")]
 pub mod custom;
+pub mod fmt;
 pub mod format;
 pub mod interactivity;
 #[cfg(feature = "nbt")]
@@ -54,6 +55,11 @@ pub mod translation;
 ///     CHILD_THREE.italic(true),
 /// ]);
 /// ```
+/// ### Display
+/// [TextComponent] implements [Display](std::fmt::Display) for easy logging, this means that\
+/// `format!("{}", component)` will return the text component as plain text resolved by the default resolver,\
+/// if you want a pretty text `{:p}` can be used instead for this proupose.
+/// Using this methods is not recommended when the component will be sent to a player.
 /// ### Building
 /// A [TextComponent] needs to be built into another format before sending it\
 /// anywhere, which requires a [TextResolutor](crate::build::TextResolutor)
@@ -71,11 +77,11 @@ pub mod translation;
 /// ```
 /// let component = TextComponent::plain("Component to build");
 /// // Builds with TextBuilder a plain String
-/// component.to_string(resolutor);
+/// component.to_plain(resolutor);
 /// // Build with RichTextBuilder a decorated String
-/// component.to_pretty_string(resolutor);
+/// component.to_pretty(resolutor);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct TextComponent {
     #[cfg_attr(feature = "serde", serde(flatten))]
@@ -302,41 +308,43 @@ impl From<String> for TextComponent {
 }
 
 pub trait Modifier {
+    type Output;
     /// Adds a child at the end of a text component
-    fn add_child<T: Into<TextComponent>>(self, child: T) -> TextComponent;
+    fn add_child<T: Into<TextComponent>>(self, child: T) -> Self::Output;
     /// Appends a [vec] of [Into]<[TextComponent]> as childs of this component
-    fn add_children<T: Into<TextComponent>>(self, children: Vec<T>) -> TextComponent;
+    fn add_children<T: Into<TextComponent>>(self, children: Vec<T>) -> Self::Output;
     /// Sets the Shift+Click chat insertion string
-    fn insertion<T: Into<Cow<'static, str>>>(self, insertion: T) -> TextComponent;
+    fn insertion<T: Into<Cow<'static, str>>>(self, insertion: T) -> Self::Output;
     /// Sets the [ClickEvent] for this component
-    fn click_event(self, click: ClickEvent) -> TextComponent;
+    fn click_event(self, click: ClickEvent) -> Self::Output;
     /// Sets the [HoverEvent] for this component
-    fn hover_event(self, hover: HoverEvent) -> TextComponent;
+    fn hover_event(self, hover: HoverEvent) -> Self::Output;
     /// Sets the [Color] of this component
     /// * If you want to use a hex code check [color_hex](TextComponent::color_hex)
-    fn color(self, color: Color) -> TextComponent;
+    fn color(self, color: Color) -> Self::Output;
     /// Sets the color of this component from a 6 digit hex color
     /// * If you want to use a predefined color check [color](TextComponent::color)
-    fn color_hex(self, color: &str) -> TextComponent;
+    fn color_hex(self, color: &str) -> Self::Output;
     /// Sets the font used to display this component
-    fn font<F: Into<String>>(self, font: F) -> TextComponent;
+    fn font<F: Into<Cow<'static, str>>>(self, font: F) -> Self::Output;
     /// Makes this component **bold**
-    fn bold(self, value: bool) -> TextComponent;
+    fn bold(self, value: bool) -> Self::Output;
     /// Makes this component *italic*
-    fn italic(self, value: bool) -> TextComponent;
+    fn italic(self, value: bool) -> Self::Output;
     /// Makes this component underlined
-    fn underlined(self, value: bool) -> TextComponent;
+    fn underlined(self, value: bool) -> Self::Output;
     /// Makes this component ~~strikethrough~~
-    fn strikethrough(self, value: bool) -> TextComponent;
+    fn strikethrough(self, value: bool) -> Self::Output;
     /// Makes this component obfuscated
-    fn obfuscated(self, value: bool) -> TextComponent;
+    fn obfuscated(self, value: bool) -> Self::Output;
     /// Sets the shadow color of this component
-    fn shadow_color(self, a: u8, r: u8, g: u8, b: u8) -> TextComponent;
+    fn shadow_color(self, a: u8, r: u8, g: u8, b: u8) -> Self::Output;
     /// Sets all the format of this component to the default
-    fn reset(self) -> TextComponent;
+    fn reset(self) -> Self::Output;
 }
 
 impl<T: Into<TextComponent> + Sized> Modifier for T {
+    type Output = TextComponent;
     fn add_child<F: Into<TextComponent>>(self, child: F) -> TextComponent {
         let mut component = self.into();
         component.children.push(child.into());
@@ -366,64 +374,143 @@ impl<T: Into<TextComponent> + Sized> Modifier for T {
         component
     }
 
-    #[inline]
     fn color(self, color: Color) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.color(color);
         component
     }
-    #[inline]
     fn color_hex(self, color: &str) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.color_hex(color);
         component
     }
-    #[inline]
-    fn font<F: Into<String>>(self, font: F) -> TextComponent {
+    fn font<F: Into<Cow<'static, str>>>(self, font: F) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.font(font);
         component
     }
-    #[inline]
     fn bold(self, value: bool) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.bold(value);
         component
     }
-    #[inline]
     fn italic(self, value: bool) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.italic(value);
         component
     }
-    #[inline]
     fn underlined(self, value: bool) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.underlined(value);
         component
     }
-    #[inline]
     fn strikethrough(self, value: bool) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.strikethrough(value);
         component
     }
-    #[inline]
     fn obfuscated(self, value: bool) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.obfuscated(value);
         component
     }
-    #[inline]
     fn shadow_color(self, a: u8, r: u8, g: u8, b: u8) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.shadow_color(a, r, g, b);
         component
     }
-    #[inline]
     fn reset(self) -> TextComponent {
         let mut component = self.into();
         component.format = component.format.reset();
         component
+    }
+}
+
+impl<'a> Modifier for &'a mut TextComponent {
+    type Output = &'a mut TextComponent;
+    fn add_child<T: Into<TextComponent>>(self, child: T) -> &'a mut TextComponent {
+        self.children.push(child.into());
+        self
+    }
+
+    fn add_children<T: Into<TextComponent>>(self, children: Vec<T>) -> &'a mut TextComponent {
+        for child in children {
+            self.children.push(child.into());
+        }
+        self
+    }
+
+    fn insertion<T: Into<Cow<'static, str>>>(self, insertion: T) -> &'a mut TextComponent {
+        self.interactions.insertion = Some(insertion.into());
+        self
+    }
+
+    fn click_event(self, click: ClickEvent) -> &'a mut TextComponent {
+        self.interactions.click = Some(click);
+        self
+    }
+
+    fn hover_event(self, hover: HoverEvent) -> &'a mut TextComponent {
+        self.interactions.hover = Some(hover);
+        self
+    }
+
+    fn color(self, color: Color) -> &'a mut TextComponent {
+        self.format.color = Some(color);
+        self
+    }
+
+    fn color_hex(self, color: &str) -> &'a mut TextComponent {
+        if let Some(color) = Color::from_hex(color) {
+            self.format.color = Some(color);
+        }
+        self
+    }
+
+    fn font<F: Into<Cow<'static, str>>>(self, font: F) -> &'a mut TextComponent {
+        self.format.font = Some(font.into());
+        self
+    }
+
+    fn bold(self, value: bool) -> &'a mut TextComponent {
+        self.format.bold = Some(value);
+        self
+    }
+
+    fn italic(self, value: bool) -> &'a mut TextComponent {
+        self.format.italic = Some(value);
+        self
+    }
+
+    fn underlined(self, value: bool) -> &'a mut TextComponent {
+        self.format.underlined = Some(value);
+        self
+    }
+
+    fn strikethrough(self, value: bool) -> &'a mut TextComponent {
+        self.format.strikethrough = Some(value);
+        self
+    }
+
+    fn obfuscated(self, value: bool) -> &'a mut TextComponent {
+        self.format.obfuscated = Some(value);
+        self
+    }
+
+    fn shadow_color(self, a: u8, r: u8, g: u8, b: u8) -> &'a mut TextComponent {
+        self.format.shadow_color = Some(Format::parse_shadow_color(a, r, g, b));
+        self
+    }
+
+    fn reset(self) -> &'a mut TextComponent {
+        self.format.color = Some(Color::White);
+        self.format.font = Some(Cow::Borrowed("minecraft:default"));
+        self.format.bold = Some(false);
+        self.format.italic = Some(false);
+        self.format.underlined = Some(false);
+        self.format.strikethrough = Some(false);
+        self.format.obfuscated = Some(false);
+        self.format.shadow_color = None;
+        self
     }
 }

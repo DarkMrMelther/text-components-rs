@@ -6,11 +6,11 @@ use crate::{
     interactivity::{ClickEvent, HoverEvent, Interactivity},
     translation::TranslatedMessage,
 };
-#[cfg(feature = "nbt")]
+
 use simdnbt::owned::{NbtCompound, NbtList, NbtTag};
+
 use std::borrow::Cow;
 
-#[cfg(feature = "nbt")]
 impl TextComponent {
     pub fn from_nbt(tag: &NbtTag) -> Option<Self> {
         match tag {
@@ -64,7 +64,6 @@ impl TextComponent {
     }
 }
 
-#[cfg(feature = "nbt")]
 impl Content {
     fn from_compound(compound: &NbtCompound) -> Option<Self> {
         if let Some(tag) = compound.get("text")
@@ -307,7 +306,6 @@ impl Content {
     }
 }
 
-#[cfg(feature = "nbt")]
 impl Format {
     fn from_compound(compound: &NbtCompound) -> Self {
         let mut format = Format::new();
@@ -341,7 +339,7 @@ impl Format {
         if let Some(tag) = compound.get("font")
             && let NbtTag::String(color) = tag
         {
-            format = format.font(color.to_str());
+            format = format.font(color.to_string());
         }
         if let Some(tag) = compound.get("bold") {
             match tag {
@@ -410,9 +408,9 @@ impl Format {
         }
         if let Some(tag) = compound.get("shadow_color") {
             match tag {
-                NbtTag::Short(n) => format.shadow_color = Some(*n as i32),
-                NbtTag::Int(n) => format.shadow_color = Some(*n as i32),
-                NbtTag::Long(n) => format.shadow_color = Some(*n as i32),
+                NbtTag::Short(n) => format.shadow_color = Some(*n as i64),
+                NbtTag::Int(n) => format.shadow_color = Some(*n as i64),
+                NbtTag::Long(n) => format.shadow_color = Some(*n as i64),
                 NbtTag::List(list) => {
                     let list = list.as_nbt_tags();
                     if list.len() == 4 {
@@ -436,7 +434,6 @@ impl Format {
     }
 }
 
-#[cfg(feature = "nbt")]
 impl Interactivity {
     fn from_compound(compound: &NbtCompound) -> Self {
         let mut interaction = Interactivity::new();
@@ -460,7 +457,6 @@ impl Interactivity {
     }
 }
 
-#[cfg(feature = "nbt")]
 impl HoverEvent {
     fn from_compound(compound: &NbtCompound) -> Option<Self> {
         let tag = compound.get("action")?;
@@ -560,10 +556,8 @@ impl HoverEvent {
     }
 }
 
-#[cfg(feature = "nbt")]
 impl ClickEvent {
     fn from_compound(compound: &NbtCompound) -> Option<Self> {
-        println!("=====================");
         let tag = compound.get("action")?;
         if let NbtTag::String(event) = tag {
             return match &*event.to_str() {
@@ -644,7 +638,7 @@ impl ClickEvent {
     }
 }
 
-#[cfg(all(feature = "nbt", feature = "custom"))]
+#[cfg(feature = "custom")]
 impl CustomData {
     fn from_compound(compound: &NbtCompound) -> Option<Self> {
         use crate::custom::{CustomData, Payload};

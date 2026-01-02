@@ -1,26 +1,6 @@
 use crate::TextComponent;
 use std::borrow::Cow;
 
-pub trait TranslationManager {
-    /// Gets the translation for the passed key
-    fn translate(&self, key: &str) -> Option<String>;
-    fn split_translation(&self, text: String) -> Vec<(String, usize)> {
-        let parts: Vec<String> = text.split("%s").map(|s| s.to_string()).collect();
-        let mut translation = vec![];
-        let mut i = 1;
-        let len = parts.len();
-        for part in parts {
-            if i != len {
-                translation.push((part, i));
-            } else {
-                translation.push((part, 0));
-            }
-            i += 1;
-        }
-        translation
-    }
-}
-
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 pub struct TranslatedMessage {
