@@ -29,6 +29,7 @@ pub fn build_translations(path: String) -> TokenStream {
 
     // Add imports
     stream.extend(quote! {
+        #![allow(dead_code)]
         use text_components::translation::Translation;
     });
 
