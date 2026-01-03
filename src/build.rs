@@ -74,5 +74,3 @@ pub fn build_translations(path: String) -> TokenStream {
 
     stream
 }
-
-fn main() {}

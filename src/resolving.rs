@@ -14,17 +14,25 @@ pub trait TextResolutor {
     fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent>;
     fn translate(&self, key: &str) -> Option<String>;
     fn split_translation(&self, text: String) -> Vec<(String, usize)> {
-        let parts: Vec<String> = text.split("%s").map(|s| s.to_string()).collect();
-        let mut translation = vec![];
-        let mut i = 1;
-        let len = parts.len();
-        for part in parts {
-            if i != len {
-                translation.push((part, i));
-            } else {
-                translation.push((part, 0));
+        let mut positions = vec![(0, 0, 0), (text.len(), 0, 0)];
+        for i in 1..=8 {
+            for (pos, _) in text.match_indices(&format!("%{i}$s")) {
+                positions.push((pos, i, 4usize));
             }
-            i += 1;
+        }
+        let mut counter = 1;
+        for (pos, _) in text.match_indices(&format!("%s")) {
+            positions.push((pos, counter, 2usize));
+            counter += 1;
+        }
+        positions.sort_by(|(pos, _, _), (other, _, _)| pos.cmp(other));
+        let mut translation = vec![];
+        let mut positions = positions.into_iter().peekable();
+        while let Some((pos, _, size)) = positions.next() {
+            let Some(next) = positions.peek() else {
+                break;
+            };
+            translation.push((text[pos + size..next.0].to_string(), next.1));
         }
         translation
     }

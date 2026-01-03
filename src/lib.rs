@@ -8,6 +8,8 @@ use crate::{
 };
 use std::borrow::Cow;
 
+#[cfg(feature = "build")]
+pub mod build;
 pub mod content;
 #[cfg(feature = "custom")]
 pub mod custom;
