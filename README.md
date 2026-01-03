@@ -16,7 +16,7 @@ Decorate it like this:
 let component = component.color(Color::Red).bold(true);
 ```
 
-Adding interctavility like this:
+Adding interactivility like this:
 
 ```rs
 let component = component.insertion("Hello");
@@ -87,5 +87,5 @@ cargo run --example main
 With all the features:
 
 ```bash
-cargo run --example main --features serde,nbt
+cargo run --example main --features serde,nbt,custom
 ```
