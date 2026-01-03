@@ -68,8 +68,8 @@ println!("{:p}", component);
 - [x] Text Components
 - [x] Build system
 - [x] Resolution system
-- [ ] Parsing system
-- [ ] Translations build macro
+- [x] Parsing system
+- [x] Translations build macro
 - [x] Terminal integration
 - [x] Serde integration
 - [x] SimdNbt integration
