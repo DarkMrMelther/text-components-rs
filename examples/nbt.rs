@@ -4,10 +4,10 @@ use simdnbt::{
 };
 use text_components::{
     Modifier, TextComponent,
-    build::NoResolutor,
     format::Color,
     interactivity::{ClickEvent, HoverEvent},
     nbt::{NbtBuilder, ToSNBT},
+    resolving::NoResolutor,
 };
 
 fn main() -> Result<(), String> {

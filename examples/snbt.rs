@@ -17,10 +17,10 @@ fn main() {
     let component = TextComponent::from_snbt(&s);
     match component {
         Ok(component) => {
-            // println!("{:?}", component);
+            println!("{:?}", component);
             println!("{:p}", component)
         }
         Err(e) => eprintln!("{}", e),
     }
-    // ["\"Howdy!\"", { text:"\nThis is a text component!\n", color:'blue', "bold":1b, italic:true }, {text:"Texto" , type: "translatable", fallback:"lol\n", translate:"lmao"}, {sprite:"items/iron_sword"}, "\n", {object:"player", player:{name:"MrMelther"}}]
+    // ["\"Howdy!\"", { text:"\nThis is a text component!\n", color:'blue', "bold":1b, italic:true }, {text:"Texto" , type: "translatable", fallback:"lol\n", translate:"lmao"}, {sprite:"items/iron_sword"}, "\n", {object:"player", player:{name:"MrMelther"}, hover_event:{action:"show_text",value:{text:"Send msg to MrMelther"}}, click_event:{action:"suggest_command", command:"/msg MrMelther "} }, {object:"player", player:{properties:[{name:"textures", value:"[Put your base64 texture here!]"}]}}]
 }

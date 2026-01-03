@@ -2,10 +2,10 @@
 use crate::custom::Payload;
 use crate::{
     Modifier, TextComponent,
-    build::{BuildTarget, TextResolutor},
     content::{Content, Object},
     format::{Color, Format},
     interactivity::{ClickEvent, HoverEvent, Interactivity},
+    resolving::{BuildTarget, TextResolutor},
 };
 use simdnbt::{
     Mutf8String, ToNbtTag,

@@ -8,7 +8,6 @@ use crate::{
 };
 use std::borrow::Cow;
 
-pub mod build;
 pub mod content;
 #[cfg(feature = "custom")]
 pub mod custom;
@@ -18,6 +17,7 @@ pub mod interactivity;
 #[cfg(feature = "nbt")]
 pub mod nbt;
 pub mod parse;
+pub mod resolving;
 pub mod translation;
 
 /// A recursive rich text format with interaction capabilities.
@@ -109,10 +109,25 @@ impl TextComponent {
         }
     }
 
+    /// Creates a [TextComponent] of a plain text at compile time.
+    /// ## Example
+    /// ```
+    /// // Results in "Test Component"
+    /// TextComponent::const_plain("Test Component");
+    /// ```
+    pub const fn const_plain(text: &'static str) -> Self {
+        TextComponent {
+            content: Content::Text(Cow::Borrowed(text)),
+            children: vec![],
+            format: Format::new(),
+            interactions: Interactivity::new(),
+        }
+    }
+
     /// Creates a [TextComponent] of a plain text.
     /// ## Example
     /// ```
-    /// // Results in "Text Component"
+    /// // Results in "Test Component"
     /// TextComponent::plain("Test Component");
     /// ```
     /// This is equivalent of doing:
@@ -298,7 +313,7 @@ impl Default for TextComponent {
 
 impl From<&'static str> for TextComponent {
     fn from(value: &'static str) -> Self {
-        TextComponent::plain(value)
+        TextComponent::const_plain(value)
     }
 }
 impl From<String> for TextComponent {

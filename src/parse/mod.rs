@@ -2,9 +2,9 @@
 use crate::custom::{CustomData, Payload};
 use crate::{
     Modifier, TextComponent,
-    content::{Content, NbtSource, Object, ObjectPlayer, Resolvable},
+    content::{Content, NbtSource, Object, ObjectPlayer, PlayerProperties, Resolvable},
     format::{Color, Format},
-    interactivity::Interactivity,
+    interactivity::{ClickEvent, HoverEvent, Interactivity},
     translation::TranslatedMessage,
 };
 use std::{borrow::Cow, error::Error, fmt::Display, iter::Peekable, ops::AddAssign, str::Chars};
@@ -14,8 +14,8 @@ pub mod nbt;
 
 #[derive(Debug)]
 pub enum SnbtError {
-    EndedAbruptely,
-    UnfinishedComponent,
+    EndedAbruptely(u32),
+    UnfinishedComponent(u32),
     WrongContentType(String),
     UnknownKey(String),
     MissingContent,
@@ -27,12 +27,15 @@ impl Error for SnbtError {}
 impl Display for SnbtError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SnbtError::EndedAbruptely => {
-                write!(f, "The SNBT ended in the middle of the component.")
+            SnbtError::EndedAbruptely(i) => {
+                write!(
+                    f,
+                    "The SNBT ended in the middle of the component. (Line: {i})"
+                )
             }
-            SnbtError::UnfinishedComponent => write!(
+            SnbtError::UnfinishedComponent(i) => write!(
                 f,
-                "A component finished at some point, blocking the parsing."
+                "A component finished at some point, blocking the parsing. (Line: {i})"
             ),
             SnbtError::WrongContentType(content) => {
                 write!(f, "Unvalid content for the value of {content}.")
@@ -71,7 +74,7 @@ fn parse_body(first: Option<char>, chars: &mut Peekable<Chars>) -> SnbtResult<Te
                 break;
             }
             if first == ' ' {
-                return Err(SnbtError::EndedAbruptely);
+                return Err(SnbtError::EndedAbruptely(line!()));
             };
             first
         }
@@ -84,7 +87,7 @@ fn parse_body(first: Option<char>, chars: &mut Peekable<Chars>) -> SnbtResult<Te
         '{' => return parse_compound(chars),
         _ => (),
     }
-    Err(SnbtError::EndedAbruptely)
+    Err(SnbtError::EndedAbruptely(line!()))
 }
 
 fn parse_string(opener: char, chars: &mut Peekable<Chars>) -> SnbtResult<String> {
@@ -108,7 +111,7 @@ fn parse_string(opener: char, chars: &mut Peekable<Chars>) -> SnbtResult<String>
         }
         content.push(char);
     }
-    Err(SnbtError::EndedAbruptely)
+    Err(SnbtError::EndedAbruptely(line!()))
 }
 
 fn parse_vec(chars: &mut Peekable<Chars>) -> SnbtResult<Vec<TextComponent>> {
@@ -126,10 +129,10 @@ fn parse_vec(chars: &mut Peekable<Chars>) -> SnbtResult<Vec<TextComponent>> {
                 let child = parse_body(None, chars)?;
                 component.push(child);
             }
-            _ => return Err(SnbtError::UnfinishedComponent),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
         }
     }
-    Err(SnbtError::EndedAbruptely)
+    Err(SnbtError::EndedAbruptely(line!()))
 }
 
 struct CompoundParts {
@@ -154,7 +157,7 @@ impl CompoundParts {
 fn parse_compound(chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
     let mut compound = CompoundParts::new();
     let mut format = Format::new();
-    let interactions = Interactivity::new();
+    let mut interactions = Interactivity::new();
     let mut name = String::new();
     let mut in_name = true;
     while let Some(char) = chars.next() {
@@ -191,23 +194,21 @@ fn parse_compound(chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
                     break;
                 }
                 if first == ' ' {
-                    return Err(SnbtError::EndedAbruptely);
-                }
-                match name.as_str() {
-                    _ => unknown += 1,
+                    return Err(SnbtError::EndedAbruptely(line!()));
                 }
                 match_content(&name, &mut compound, first, chars, &mut unknown)?;
                 match_format(&name, &mut format, first, chars, &mut unknown)?;
+                match_interactions(&name, &mut interactions, first, chars, &mut unknown)?;
                 if unknown == 3 {
                     return Err(SnbtError::UnknownKey(name));
                 }
                 name = String::new();
             }
             ch if in_name => name.push(ch),
-            _ => return Err(SnbtError::UnfinishedComponent),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
         }
     }
-    Err(SnbtError::EndedAbruptely)
+    Err(SnbtError::EndedAbruptely(line!()))
 }
 
 fn match_content(
@@ -531,22 +532,32 @@ fn parse_scoreboard(chars: &mut Peekable<Chars>) -> SnbtResult<Content> {
                 in_name = false;
                 name = parse_string('\'', chars)?;
             }
-            ':' => match chars.peek() {
-                Some('\'') | Some('"') => {
-                    let next = chars.next().unwrap();
-                    match name.as_str() {
-                        "name" => selector = Some(parse_string(next, chars)?),
-                        "objective" => objective = Some(parse_string(next, chars)?),
-                        key => return Err(SnbtError::UnknownKey(key.to_string())),
+            ':' => {
+                in_name = false;
+                while let Some(next) = chars.peek() {
+                    if next.is_whitespace() {
+                        continue;
                     }
+                    match next {
+                        '\'' | '"' => {
+                            let next = chars.next().unwrap();
+                            match name.as_str() {
+                                "name" => selector = Some(parse_string(next, chars)?),
+                                "objective" => objective = Some(parse_string(next, chars)?),
+                                key => return Err(SnbtError::UnknownKey(key.to_string())),
+                            }
+                        }
+                        _ => return Err(SnbtError::UnfinishedComponent(line!())),
+                    }
+                    name = String::new();
+                    break;
                 }
-                _ => return Err(SnbtError::UnfinishedComponent),
-            },
+            }
             ch if in_name => name.push(ch),
-            _ => return Err(SnbtError::UnfinishedComponent),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
         }
     }
-    Err(SnbtError::EndedAbruptely)
+    Err(SnbtError::EndedAbruptely(line!()))
 }
 fn parse_player(chars: &mut Peekable<Chars>) -> SnbtResult<ObjectPlayer> {
     let mut player = ObjectPlayer {
@@ -580,36 +591,138 @@ fn parse_player(chars: &mut Peekable<Chars>) -> SnbtResult<ObjectPlayer> {
                 in_name = false;
                 name = parse_string('\'', chars)?;
             }
-            ':' => match chars.peek() {
-                Some('\'') | Some('"') => {
-                    let next = chars.next().unwrap();
-                    match name.as_str() {
-                        "name" => player.name = Some(Cow::Owned(parse_string(next, chars)?)),
-                        "texture" => player.texture = Some(Cow::Owned(parse_string(next, chars)?)),
-                        key => return Err(SnbtError::UnknownKey(key.to_string())),
+            ':' => {
+                in_name = false;
+                while let Some(next) = chars.peek() {
+                    if next.is_whitespace() {
+                        continue;
                     }
-                }
-                Some('[') => {
-                    chars.next().unwrap();
-                    match name.as_str() {
-                        "id" => {
-                            let nums = parse_int_vec(chars, "Player id")?;
-                            if nums.len() != 4 {
-                                return Err(SnbtError::UnfinishedComponent);
+                    match next {
+                        '\'' | '"' => {
+                            let next = chars.next().unwrap();
+                            match name.as_str() {
+                                "name" => {
+                                    player.name = Some(Cow::Owned(parse_string(next, chars)?))
+                                }
+                                "texture" => {
+                                    player.texture = Some(Cow::Owned(parse_string(next, chars)?))
+                                }
+                                key => return Err(SnbtError::UnknownKey(key.to_string())),
                             }
-                            player.id = Some([nums[0], nums[1], nums[2], nums[3]]);
+                            name = String::new();
+                            break;
                         }
-                        // TODO: Add player properties
-                        key => return Err(SnbtError::UnknownKey(key.to_string())),
+                        '[' => {
+                            chars.next().unwrap();
+                            match name.as_str() {
+                                "id" => {
+                                    let nums = parse_int_vec(chars, "Player id")?;
+                                    if nums.len() != 4 {
+                                        return Err(SnbtError::UnfinishedComponent(line!()));
+                                    }
+                                    player.id = Some([nums[0], nums[1], nums[2], nums[3]]);
+                                }
+                                "properties" => {
+                                    let mut properties = vec![];
+                                    while let Some(char) = chars.next() {
+                                        if char.is_whitespace() {
+                                            continue;
+                                        }
+                                        match char {
+                                            ']' => break,
+                                            ',' => (),
+                                            '{' => properties.push(parse_player_property(chars)?),
+                                            _ => {
+                                                return Err(SnbtError::UnfinishedComponent(
+                                                    line!(),
+                                                ));
+                                            }
+                                        }
+                                    }
+                                    player.properties = properties
+                                }
+                                key => return Err(SnbtError::UnknownKey(key.to_string())),
+                            }
+                            name = String::new();
+                            break;
+                        }
+                        _ => return Err(SnbtError::UnfinishedComponent(line!())),
                     }
                 }
-                _ => return Err(SnbtError::UnfinishedComponent),
-            },
+            }
             ch if in_name => name.push(ch),
-            _ => return Err(SnbtError::UnfinishedComponent),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
         }
     }
-    Err(SnbtError::EndedAbruptely)
+    Err(SnbtError::EndedAbruptely(line!()))
+}
+fn parse_player_property(chars: &mut Peekable<Chars>) -> SnbtResult<PlayerProperties> {
+    let mut property = PlayerProperties {
+        name: Cow::Borrowed("-None-"),
+        value: Cow::Borrowed("-None-"),
+        signature: None,
+    };
+    let mut name = String::new();
+    let mut in_name = true;
+    while let Some(char) = chars.next() {
+        if char.is_whitespace() {
+            continue;
+        }
+        match char {
+            '}' => {
+                if property.name == "-None-" {
+                    return Err(SnbtError::Required(
+                        String::from("Player property"),
+                        String::from("name"),
+                    ));
+                }
+                if property.value == "-None-" {
+                    return Err(SnbtError::Required(
+                        String::from("Player property"),
+                        String::from("value"),
+                    ));
+                }
+                return Ok(property);
+            }
+            ',' => in_name = true,
+            '"' => {
+                in_name = false;
+                name = parse_string('"', chars)?;
+            }
+            '\'' => {
+                in_name = false;
+                name = parse_string('\'', chars)?;
+            }
+            ':' => {
+                in_name = false;
+                while let Some(next) = chars.peek() {
+                    if next.is_whitespace() {
+                        continue;
+                    }
+                    match next {
+                        '\'' | '"' => {
+                            let next = chars.next().unwrap();
+                            match name.as_str() {
+                                "name" => property.name = Cow::Owned(parse_string(next, chars)?),
+                                "value" => property.value = Cow::Owned(parse_string(next, chars)?),
+                                "signature" => {
+                                    property.signature =
+                                        Some(Cow::Owned(parse_string(next, chars)?))
+                                }
+                                key => return Err(SnbtError::UnknownKey(key.to_string())),
+                            }
+                            name = String::new();
+                            break;
+                        }
+                        _ => return Err(SnbtError::UnfinishedComponent(line!())),
+                    }
+                }
+            }
+            ch if in_name => name.push(ch),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
+        }
+    }
+    Err(SnbtError::EndedAbruptely(line!()))
 }
 #[cfg(feature = "custom")]
 fn parse_custom(chars: &mut Peekable<Chars>) -> SnbtResult<CustomData> {
@@ -642,22 +755,32 @@ fn parse_custom(chars: &mut Peekable<Chars>) -> SnbtResult<CustomData> {
                 in_name = false;
                 name = parse_string('\'', chars)?;
             }
-            ':' => match chars.peek() {
-                Some('\'') | Some('"') => {
-                    let next = chars.next().unwrap();
-                    match name.as_str() {
-                        "id" => id = Some(parse_string(next, chars)?),
-                        key => return Err(SnbtError::UnknownKey(key.to_string())),
+            ':' => {
+                in_name = false;
+                while let Some(next) = chars.peek() {
+                    if next.is_whitespace() {
+                        continue;
                     }
+                    match next {
+                        '\'' | '"' => {
+                            let next = chars.next().unwrap();
+                            match name.as_str() {
+                                "id" => id = Some(parse_string(next, chars)?),
+                                key => return Err(SnbtError::UnknownKey(key.to_string())),
+                            }
+                        }
+                        // TODO: Add parsing for payloads
+                        _ => return Err(SnbtError::UnfinishedComponent(line!())),
+                    }
+                    name = String::new();
+                    break;
                 }
-                // TODO: Add parsing for payloads
-                _ => return Err(SnbtError::UnfinishedComponent),
-            },
+            }
             ch if in_name => name.push(ch),
-            _ => return Err(SnbtError::UnfinishedComponent),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
         }
     }
-    Err(SnbtError::EndedAbruptely)
+    Err(SnbtError::EndedAbruptely(line!()))
 }
 
 fn retrieve_content(compound: CompoundParts) -> SnbtResult<Content> {
@@ -908,6 +1031,432 @@ fn match_format(
     }
 }
 
+fn match_interactions(
+    name: &str,
+    interactions: &mut Interactivity,
+    first: char,
+    chars: &mut Peekable<Chars>,
+    unknown: &mut u8,
+) -> SnbtResult<()> {
+    match name {
+        "insertion" => {
+            if first == '\'' && first == '"' {
+                interactions.insertion = Some(Cow::Owned(parse_string(first, chars)?));
+                return Ok(());
+            }
+            Err(SnbtError::WrongContentType(String::from("insertion")))
+        }
+        "click_event" => {
+            if first == '{' {
+                interactions.click = Some(parse_click(chars)?);
+                return Ok(());
+            }
+            Err(SnbtError::WrongContentType(String::from("click_event")))
+        }
+        "hover_event" => {
+            if first == '{' {
+                interactions.hover = Some(parse_hover(chars)?);
+                return Ok(());
+            }
+            Err(SnbtError::WrongContentType(String::from("hover_event")))
+        }
+        _ => {
+            unknown.add_assign(1);
+            Ok(())
+        }
+    }
+}
+
+fn parse_click(chars: &mut Peekable<Chars>) -> SnbtResult<ClickEvent> {
+    let mut action = String::new();
+    let mut events = [None, None, None, None, None, None, None, None];
+    let mut name = String::new();
+    let mut in_name = true;
+    while let Some(char) = chars.next() {
+        if char.is_whitespace() {
+            continue;
+        }
+        match char {
+            '}' => {
+                return match action.as_str() {
+                    "open_url" => {
+                        if let Some(Some(event)) = events.into_iter().nth(0) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"open_url\""),
+                            String::from("url"),
+                        ))
+                    }
+                    "open_file" => {
+                        if let Some(Some(event)) = events.into_iter().nth(1) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"open_file\""),
+                            String::from("path"),
+                        ))
+                    }
+                    "run_command" => {
+                        if let Some(Some(event)) = events.into_iter().nth(2) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"run_command\""),
+                            String::from("command"),
+                        ))
+                    }
+                    "suggest_command" => {
+                        if let Some(Some(event)) = events.into_iter().nth(3) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"suggest_command\""),
+                            String::from("command"),
+                        ))
+                    }
+                    "change_page" => {
+                        if let Some(Some(event)) = events.into_iter().nth(4) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"change_page\""),
+                            String::from("page"),
+                        ))
+                    }
+                    "copy_to_clipboard" => {
+                        if let Some(Some(event)) = events.into_iter().nth(5) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"copy_to_clipboard\""),
+                            String::from("value"),
+                        ))
+                    }
+                    "show_dialog" => {
+                        if let Some(Some(event)) = events.into_iter().nth(6) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"show_dialog\""),
+                            String::from("dialog"),
+                        ))
+                    }
+                    #[cfg(feature = "custom")]
+                    "custom" => {
+                        if let Some(Some(event)) = events.into_iter().nth(7) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"custom\""),
+                            String::from("id"),
+                        ))
+                    }
+                    _ => Err(SnbtError::WrongContentType(String::from("action"))),
+                };
+            }
+            ',' => in_name = true,
+            '"' => {
+                in_name = false;
+                name = parse_string('"', chars)?;
+            }
+            '\'' => {
+                in_name = false;
+                name = parse_string('\'', chars)?;
+            }
+            ':' => {
+                in_name = false;
+                while let Some(next) = chars.peek() {
+                    if next.is_whitespace() {
+                        continue;
+                    }
+                    match next {
+                        '\'' | '"' => {
+                            let next = chars.next().unwrap();
+                            match name.as_str() {
+                                "action" => action = parse_string(next, chars)?,
+                                "url" => {
+                                    events[0] = Some(ClickEvent::OpenUrl {
+                                        url: Cow::Owned(parse_string(next, chars)?),
+                                    })
+                                }
+                                "path" => {
+                                    events[1] = Some(ClickEvent::OpenFile {
+                                        path: Cow::Owned(parse_string(next, chars)?),
+                                    })
+                                }
+                                "command" => {
+                                    let command: Cow<'static, str> =
+                                        Cow::Owned(parse_string(next, chars)?);
+                                    events[2] = Some(ClickEvent::RunCommand {
+                                        command: command.clone(),
+                                    });
+                                    events[3] = Some(ClickEvent::SuggestCommand { command })
+                                }
+                                "page" => {
+                                    events[4] = Some(ClickEvent::ChangePage {
+                                        page: parse_num(next, chars, "page")?.as_i32(),
+                                    })
+                                }
+                                "value" => {
+                                    events[5] = Some(ClickEvent::CopyToClipboard {
+                                        value: Cow::Owned(parse_string(next, chars)?),
+                                    })
+                                }
+                                "dialog" => {
+                                    events[6] = Some(ClickEvent::ShowDialog {
+                                        dialog: Cow::Owned(parse_string(next, chars)?),
+                                    })
+                                }
+                                #[cfg(feature = "custom")]
+                                "id" => {
+                                    events[7] = Some(ClickEvent::Custom(CustomData {
+                                        id: Cow::Owned(parse_string(next, chars)?),
+                                        payload: Payload::Empty,
+                                    }))
+                                }
+                                #[cfg(feature = "custom")]
+                                "payload" => {
+                                    let _ = parse_string(next, chars);
+                                }
+                                key => return Err(SnbtError::UnknownKey(key.to_string())),
+                            }
+                        }
+                        // TODO: Add parsing for payloads
+                        _ => return Err(SnbtError::UnfinishedComponent(line!())),
+                    }
+                    name = String::new();
+                    break;
+                }
+            }
+            ch if in_name => name.push(ch),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
+        }
+    }
+    Err(SnbtError::EndedAbruptely(line!()))
+}
+fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
+    let mut action = String::new();
+    let mut events = [None, None, None];
+    let mut name = String::new();
+    let mut in_name = true;
+    while let Some(char) = chars.next() {
+        if char.is_whitespace() {
+            continue;
+        }
+        match char {
+            '}' => {
+                return match action.as_str() {
+                    "show_text" => {
+                        if let Some(Some(event)) = events.into_iter().nth(0) {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"show_text\""),
+                            String::from("value"),
+                        ))
+                    }
+                    "show_item" => {
+                        if let Some(Some(event)) = events.into_iter().nth(0)
+                            && let HoverEvent::ShowItem { id, .. } = &event
+                            && id != "-None-"
+                        {
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"show_item\""),
+                            String::from("id"),
+                        ))
+                    }
+                    "show_entity" => {
+                        if let Some(Some(event)) = events.into_iter().nth(0)
+                            && let HoverEvent::ShowEntity { id, uuid, .. } = &event
+                        {
+                            if id == "-None-" {
+                                return Err(SnbtError::Required(
+                                    String::from("\"show_entity\""),
+                                    String::from("id"),
+                                ));
+                            }
+                            if *uuid == [-1, -1, -1, -1] {
+                                return Err(SnbtError::Required(
+                                    String::from("\"show_entity\""),
+                                    String::from("uuid"),
+                                ));
+                            }
+                            return Ok(event);
+                        }
+                        Err(SnbtError::Required(
+                            String::from("\"show_entity\""),
+                            String::from("id\", and \"uuid"),
+                        ))
+                    }
+                    _ => Err(SnbtError::WrongContentType(String::from("action"))),
+                };
+            }
+            ',' => in_name = true,
+            '"' => {
+                in_name = false;
+                name = parse_string('"', chars)?;
+            }
+            '\'' => {
+                in_name = false;
+                name = parse_string('\'', chars)?;
+            }
+            ':' => {
+                in_name = false;
+                while let Some(next) = chars.next() {
+                    if next.is_whitespace() {
+                        continue;
+                    }
+                    match name.as_str() {
+                        "action" => action = parse_string(next, chars)?,
+                        "value" => {
+                            events[0] = Some(HoverEvent::ShowText {
+                                value: Box::new(parse_body(Some(next), chars)?),
+                            })
+                        }
+                        "id" => match next {
+                            '\'' | '"' => {
+                                let new_id: Cow<'static, str> =
+                                    Cow::Owned(parse_string(next, chars)?);
+                                match &mut events[1] {
+                                    Some(HoverEvent::ShowItem { id, .. }) => {
+                                        *id = new_id.clone();
+                                    }
+                                    None | _ => {
+                                        events[1] = Some(HoverEvent::ShowItem {
+                                            id: new_id.clone(),
+                                            count: None,
+                                            components: None,
+                                        })
+                                    }
+                                }
+                                match &mut events[2] {
+                                    Some(HoverEvent::ShowEntity { id, .. }) => {
+                                        *id = new_id;
+                                    }
+                                    None | _ => {
+                                        events[2] = Some(HoverEvent::ShowEntity {
+                                            name: None,
+                                            id: new_id,
+                                            uuid: [-1, -1, -1, -1],
+                                        })
+                                    }
+                                }
+                            }
+                            _ => return Err(SnbtError::WrongContentType(String::from("id"))),
+                        },
+                        "count" => match &mut events[1] {
+                            Some(HoverEvent::ShowItem { count, .. }) => {
+                                *count = Some(parse_num(next, chars, "id")?.as_i32());
+                            }
+                            None | _ => {
+                                events[1] = Some(HoverEvent::ShowItem {
+                                    id: Cow::Borrowed("-None-"),
+                                    count: Some(parse_num(next, chars, "id")?.as_i32()),
+                                    components: None,
+                                })
+                            }
+                        },
+                        "components" => match next {
+                            '\'' | '"' => match &mut events[1] {
+                                Some(HoverEvent::ShowItem { components, .. }) => {
+                                    *components = Some(Cow::Owned(parse_string(next, chars)?));
+                                }
+                                None | _ => {
+                                    events[1] = Some(HoverEvent::ShowItem {
+                                        id: Cow::Borrowed("-None-"),
+                                        count: None,
+                                        components: Some(Cow::Owned(parse_string(next, chars)?)),
+                                    })
+                                }
+                            },
+
+                            _ => {
+                                return Err(SnbtError::WrongContentType(String::from(
+                                    "components",
+                                )));
+                            }
+                        },
+                        "name" => match &mut events[2] {
+                            Some(HoverEvent::ShowEntity { name, .. }) => {
+                                *name = Some(Box::new(parse_body(Some(next), chars)?));
+                            }
+                            None | _ => {
+                                events[2] = Some(HoverEvent::ShowEntity {
+                                    name: Some(Box::new(parse_body(Some(next), chars)?)),
+                                    id: Cow::Borrowed("-None-"),
+                                    uuid: [-1, -1, -1, -1],
+                                })
+                            }
+                        },
+                        "uuid" => {
+                            let new_uuid = match next {
+                                '\'' | '"' => {
+                                    let Some(uuid) = parse_uuid_string(parse_string(next, chars)?)
+                                    else {
+                                        return Err(SnbtError::WrongContentType(String::from(
+                                            "uuid",
+                                        )));
+                                    };
+                                    uuid
+                                }
+                                '[' => {
+                                    let nums = parse_int_vec(chars, "uuid")?;
+                                    if nums.len() != 4 {
+                                        return Err(SnbtError::WrongContentType(String::from(
+                                            "uuid",
+                                        )));
+                                    }
+                                    [nums[0], nums[1], nums[2], nums[3]]
+                                }
+                                _ => return Err(SnbtError::WrongContentType(String::from("uuid"))),
+                            };
+
+                            match &mut events[2] {
+                                Some(HoverEvent::ShowEntity { uuid, .. }) => {
+                                    *uuid = new_uuid;
+                                }
+                                None | _ => {
+                                    events[2] = Some(HoverEvent::ShowEntity {
+                                        name: None,
+                                        id: Cow::Borrowed("-None-"),
+                                        uuid: new_uuid,
+                                    })
+                                }
+                            }
+                        }
+                        key => return Err(SnbtError::UnknownKey(key.to_string())),
+                    }
+                    name = String::new();
+                    break;
+                }
+            }
+            ch if in_name => name.push(ch),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
+        }
+    }
+    Err(SnbtError::EndedAbruptely(line!()))
+}
+
+fn parse_uuid_string<T: ToString>(uuid: T) -> Option<[i32; 4]> {
+    let uuid = uuid.to_string();
+    if uuid.chars().count() != 36 {
+        return None;
+    }
+    let uuid = uuid.split('-').collect::<Vec<&str>>().concat();
+    let (p1, rest) = uuid.split_at(8);
+    let (p2, rest) = rest.split_at(8);
+    let (p3, p4) = rest.split_at(8);
+    Some([
+        i32::from_str_radix(p1, 16).ok()?,
+        i32::from_str_radix(p2, 16).ok()?,
+        i32::from_str_radix(p3, 16).ok()?,
+        i32::from_str_radix(p4, 16).ok()?,
+    ])
+}
+
 fn parse_bool(first: char, chars: &mut Peekable<Chars>, content_type: &str) -> SnbtResult<bool> {
     if first.is_numeric() || first == '-' {
         return match parse_num(first, chars, content_type)? {
@@ -966,6 +1515,16 @@ enum Num {
     F64(f64),
 }
 impl Num {
+    pub fn as_i32(self) -> i32 {
+        match self {
+            Num::I8(n) => n as i32,
+            Num::I16(n) => n as i32,
+            Num::I32(n) => n,
+            Num::I64(n) => n as i32,
+            Num::F32(n) => n as i32,
+            Num::F64(n) => n as i32,
+        }
+    }
     pub fn as_i64(self) -> i64 {
         match self {
             Num::I8(n) => n as i64,
@@ -1088,11 +1647,11 @@ fn parse_int_vec(chars: &mut Peekable<Chars>, content_type: &str) -> SnbtResult<
                 if let Some(&';') = chars.peek() {
                     chars.next();
                 } else {
-                    return Err(SnbtError::UnfinishedComponent);
+                    return Err(SnbtError::UnfinishedComponent(line!()));
                 };
             }
-            _ => return Err(SnbtError::UnfinishedComponent),
+            _ => return Err(SnbtError::UnfinishedComponent(line!())),
         }
     }
-    Err(SnbtError::EndedAbruptely)
+    Err(SnbtError::EndedAbruptely(line!()))
 }

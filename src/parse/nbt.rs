@@ -4,6 +4,7 @@ use crate::{
     custom::CustomData,
     format::{Color, Format},
     interactivity::{ClickEvent, HoverEvent, Interactivity},
+    parse::parse_uuid_string,
     translation::TranslatedMessage,
 };
 
@@ -502,22 +503,7 @@ impl HoverEvent {
                     let id = compound.get("id")?;
                     let uuid = compound.get("uuid")?;
                     let uuid: Vec<i32> = match uuid {
-                        NbtTag::String(uuid) => {
-                            let uuid = uuid.to_string();
-                            if uuid.chars().count() != 36 {
-                                return None;
-                            }
-                            let uuid = uuid.split('-').collect::<Vec<&str>>().concat();
-                            let (p1, rest) = uuid.split_at(8);
-                            let (p2, rest) = rest.split_at(8);
-                            let (p3, p4) = rest.split_at(8);
-                            vec![
-                                i32::from_str_radix(p1, 16).ok()?,
-                                i32::from_str_radix(p2, 16).ok()?,
-                                i32::from_str_radix(p3, 16).ok()?,
-                                i32::from_str_radix(p4, 16).ok()?,
-                            ]
-                        }
+                        NbtTag::String(uuid) => parse_uuid_string(uuid.to_string())?.to_vec(),
                         NbtTag::List(NbtList::Int(nums)) => {
                             if nums.len() != 4 {
                                 return None;

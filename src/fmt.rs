@@ -1,9 +1,9 @@
 use crate::{
     TextComponent,
-    build::{BuildTarget, NoResolutor, TextResolutor},
     content::{Content, Object},
     format::{Color, Format},
     interactivity::Interactivity,
+    resolving::{BuildTarget, NoResolutor, TextResolutor},
 };
 use colored::{ColoredString, Colorize};
 use rand::random_range;

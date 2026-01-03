@@ -13,11 +13,11 @@ use text_components::custom::{CustomContent, CustomData, CustomRegistry, Payload
 use text_components::nbt::{NbtBuilder, ToSNBT};
 use text_components::{
     Modifier, TextComponent,
-    build::TextResolutor,
     content::{NbtSource, ObjectPlayer, Resolvable},
     fmt::set_display_resolutor,
     format::Color,
     interactivity::{ClickEvent, HoverEvent},
+    resolving::TextResolutor,
     translation::{TranslatedMessage, Translation},
 };
 
