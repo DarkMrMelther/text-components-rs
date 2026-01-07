@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 #[cfg(feature = "custom")]
 use crate::custom::CustomData;
 use crate::{
@@ -35,6 +37,24 @@ pub trait TextResolutor {
             translation.push((text[pos + size..next.0].to_string(), next.1));
         }
         translation
+    }
+}
+
+impl<T: TextResolutor> TextResolutor for Arc<T> {
+    fn resolve_content(&self, resolvable: &Resolvable) -> TextComponent {
+        (**self).resolve_content(resolvable)
+    }
+
+    fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent> {
+        (**self).resolve_custom(data)
+    }
+
+    fn translate(&self, key: &str) -> Option<String> {
+        (**self).translate(key)
+    }
+
+    fn split_translation(&self, text: String) -> Vec<(String, usize)> {
+        (**self).split_translation(text)
     }
 }
 
