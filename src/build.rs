@@ -16,7 +16,7 @@ fn count_parameters(text: &str) -> usize {
     sequential.max(positional)
 }
 
-pub fn build_translations(path: String) -> TokenStream {
+pub fn build_translations(path: &str) -> TokenStream {
     println!("cargo:rerun-if-changed={path}");
 
     let lang_file =
