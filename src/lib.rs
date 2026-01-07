@@ -166,7 +166,7 @@ impl TextComponent {
     /// // Results in "The Rust compiler was killed by you using magic".
     /// TextComponent::translated(DEATH_ATTACK_INDIRECT_MAGIC.message(["The Rust compiler", "you"]));
     /// ```
-    pub fn translated(message: TranslatedMessage) -> Self {
+    pub const fn translated(message: TranslatedMessage) -> Self {
         TextComponent {
             content: Content::Translate(message),
             children: vec![],
@@ -205,7 +205,7 @@ impl TextComponent {
     /// // Displays the head of Jeb_
     /// TextComponent::player_head(ObjectPlayer::name("Jeb_"), true);
     /// ```
-    pub fn player_head(player: ObjectPlayer, hat: bool) -> Self {
+    pub const fn player_head(player: ObjectPlayer, hat: bool) -> Self {
         TextComponent {
             content: Content::Object(Object::Player { player, hat }),
             children: Vec::new(),
