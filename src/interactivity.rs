@@ -37,15 +37,15 @@ impl Interactivity {
     pub fn is_none(&self) -> bool {
         self.insertion.is_none() && self.click.is_none() && self.hover.is_none()
     }
-    pub fn mix(&mut self, other: Self) {
+    pub fn mix(&self, other: &mut Self) {
         if self.insertion.is_none() && other.insertion.is_some() {
-            self.insertion = other.insertion
+            other.insertion = other.insertion.clone()
         }
         if self.click.is_none() && other.click.is_some() {
-            self.click = other.click
+            other.click = other.click.clone()
         }
         if self.hover.is_none() && other.hover.is_some() {
-            self.hover = other.hover
+            other.hover = other.hover.clone()
         }
     }
 }

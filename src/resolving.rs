@@ -5,12 +5,13 @@ use crate::custom::CustomData;
 use crate::{
     TextComponent,
     content::{Content, Resolvable},
-    interactivity::{HoverEvent, Interactivity},
-    translation::TranslatedMessage,
 };
 
 /// Recomendation: Implement this on the World and Player
 pub trait TextResolutor {
+    fn resolve_other(&self, content: &Content) -> TextComponent {
+        TextComponent::from(content.clone())
+    }
     fn resolve_content(&self, resolvable: &Resolvable) -> TextComponent;
     #[cfg(feature = "custom")]
     fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent>;
@@ -45,6 +46,7 @@ impl<T: TextResolutor> TextResolutor for Arc<T> {
         (**self).resolve_content(resolvable)
     }
 
+    #[cfg(feature = "custom")]
     fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent> {
         (**self).resolve_custom(data)
     }
@@ -92,84 +94,44 @@ impl TextComponent {
     }
 
     pub fn resolve<R: TextResolutor + ?Sized>(&self, resolutor: &R) -> TextComponent {
-        let interactions = Interactivity {
-            insertion: self.interactions.insertion.clone(),
-            click: self.interactions.click.clone(),
-            hover: match &self.interactions.hover {
-                Some(HoverEvent::ShowText { value }) => Some(HoverEvent::ShowText {
-                    value: Box::new(value.resolve(resolutor)),
-                }),
-                event => event.clone(),
-            },
+        let mut component = match &self.content {
+            #[cfg(feature = "custom")]
+            Content::Custom(data) => resolutor
+                .resolve_custom(data)
+                .unwrap_or(TextComponent::new()),
+            Content::Resolvable(resolvable) => resolutor.resolve_content(resolvable),
+            content => resolutor.resolve_other(content),
         };
 
-        let mut children = self
-            .children
-            .iter()
-            .map(|child| child.resolve(resolutor))
-            .collect();
-
-        match &self.content {
-            Content::Translate(message) => TextComponent {
-                content: Content::Translate(TranslatedMessage {
-                    key: message.key.clone(),
-                    fallback: message.fallback.clone(),
-                    args: message.args.as_ref().map(|args| {
-                        args.iter()
-                            .map(|arg| arg.resolve(resolutor))
-                            .collect::<Vec<TextComponent>>()
-                            .into_boxed_slice()
-                    }),
-                }),
-                children,
-                format: self.format.clone(),
-                interactions,
-            },
-            Content::Resolvable(resolvable) => {
-                let resolvable = match resolvable {
-                    Resolvable::Entity {
-                        selector,
-                        separator,
-                    } => Resolvable::Entity {
-                        selector: selector.clone(),
-                        separator: Box::new(separator.resolve(resolutor)),
-                    },
-                    Resolvable::NBT {
-                        path,
-                        interpret,
-                        separator,
-                        source,
-                    } => Resolvable::NBT {
-                        path: path.clone(),
-                        interpret: *interpret,
-                        separator: Box::new(separator.resolve(resolutor)),
-                        source: source.clone(),
-                    },
-                    scoreboard => scoreboard.clone(),
-                };
-                let mut resolved = resolutor.resolve_content(&resolvable);
-                resolved.children.append(&mut children);
-                resolved.format = resolved.format.mix(&self.format);
-                resolved.interactions.mix(interactions);
-                resolved
+        match &mut component.content {
+            Content::Translate(message) => {
+                message.args = message.args.as_ref().map(|args| {
+                    args.iter()
+                        .map(|arg| arg.resolve(resolutor))
+                        .collect::<Vec<TextComponent>>()
+                        .into_boxed_slice()
+                });
             }
-            #[cfg(feature = "custom")]
-            Content::Custom(data) => {
-                let mut resolved = resolutor
-                    .resolve_custom(data)
-                    .unwrap_or(TextComponent::new());
-                resolved.children.append(&mut children);
-                resolved.format = resolved.format.mix(&self.format);
-                resolved.interactions.mix(interactions);
-                resolved
+            Content::Resolvable(Resolvable::Entity { separator, .. }) => {
+                *separator = Box::new(separator.resolve(resolutor));
             }
-            content => TextComponent {
-                content: content.clone(),
-                children,
-                format: self.format.clone(),
-                interactions,
-            },
+            Content::Resolvable(Resolvable::NBT { separator, .. }) => {
+                *separator = Box::new(separator.resolve(resolutor));
+            }
+            _ => (),
         }
+
+        component.children.append(
+            &mut self
+                .children
+                .iter()
+                .map(|child| child.resolve(resolutor))
+                .collect(),
+        );
+        self.interactions.mix(&mut component.interactions);
+        component.format = self.format.mix(&component.format);
+
+        component
     }
 }
 

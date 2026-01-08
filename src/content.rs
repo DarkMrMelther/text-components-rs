@@ -189,6 +189,16 @@ impl NbtSource {
     }
 }
 
+impl From<Content> for TextComponent {
+    fn from(value: Content) -> Self {
+        TextComponent {
+            content: value,
+            children: Vec::new(),
+            format: Format::new(),
+            interactions: Interactivity::new(),
+        }
+    }
+}
 impl From<Object> for TextComponent {
     fn from(value: Object) -> Self {
         TextComponent {

@@ -4,7 +4,7 @@ description = "A Rust implementation of Minecraft's Text Components"
 repository = "https://github.com/DarkMrMelther/text-components-rs"
 license = "GPL-3.0-or-later"
 readme = "README.md"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 exclude = ["examples/*"]
 keywords = ["minecraft", "mc", "text_components", "pretty", "terminal"]
@@ -41,11 +41,11 @@ serde = { version = "1.0.228", features = ["derive"], optional = true }
 simdnbt = { version = "0.9.0", optional = true }
 # Build dependencies
 heck = { version = "0.5.0", optional = true }
-proc-macro2 = { version = "1.0.104", optional = true }
-quote = { version = "1.0.42", optional = true }
+proc-macro2 = { version = "1.0.105", optional = true }
+quote = { version = "1.0.43", optional = true }
 rustc-hash = { version = "2.1.1", optional = true }
-serde_json = { version = "1.0.148", optional = true }
+serde_json = { version = "1.0.149", optional = true }
 
 [dev-dependencies]
 chrono = "0.4.42"
-serde_json = "1.0.148"
+serde_json = "1.0.149"
