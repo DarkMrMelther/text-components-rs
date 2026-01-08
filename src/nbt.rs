@@ -22,28 +22,6 @@ impl BuildTarget for NbtBuilder {
         resolutor: &R,
         component: &TextComponent,
     ) -> Nbt {
-        if let Content::Text(str) = &component.content
-            && str.is_empty()
-            && !component.children.is_empty()
-        {
-            return Nbt::Some(BaseNbt::new(
-                "",
-                NbtCompound::from_values(vec![(
-                    "".into(),
-                    NbtTag::List(NbtList::Compound(
-                        component
-                            .children
-                            .iter()
-                            .map(|nbt| match self.build_component(resolutor, nbt) {
-                                Nbt::Some(base) => base.as_compound(),
-                                Nbt::None => NbtCompound::from_values(vec![]),
-                            })
-                            .collect(),
-                    )),
-                )]),
-            ));
-        }
-
         let mut items = vec![];
         component.content.to_compound(&mut items, self, resolutor);
         component.format.to_compound(&mut items);
