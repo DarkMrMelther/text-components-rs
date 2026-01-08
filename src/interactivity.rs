@@ -41,13 +41,13 @@ impl Interactivity {
     }
     pub fn mix(&self, other: &mut Self) {
         if self.insertion.is_some() {
-            other.insertion = other.insertion.clone()
+            other.insertion = self.insertion.clone()
         }
         if self.click.is_some() {
-            other.click = other.click.clone()
+            other.click = self.click.clone()
         }
         if self.hover.is_some() {
-            other.hover = other.hover.clone()
+            other.hover = self.hover.clone()
         }
     }
 }
