@@ -1411,8 +1411,10 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                         )));
                                     }
                                     Uuid::from_u64_pair(
-                                        (nums[0] as u64) + (nums[1] as u64),
-                                        (nums[2] as u64) + (nums[3] as u64),
+                                        (((nums[0] as u32) as u64) << 32)
+                                            + ((nums[1] as u32) as u64),
+                                        (((nums[2] as u32) as u64) << 32)
+                                            + ((nums[3] as u32) as u64),
                                     )
                                 }
                                 _ => return Err(SnbtError::WrongContentType(String::from("uuid"))),
