@@ -1258,7 +1258,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                         ))
                     }
                     "show_item" => {
-                        if let Some(Some(event)) = events.into_iter().nth(0)
+                        if let Some(Some(event)) = events.into_iter().nth(1)
                             && let HoverEvent::ShowItem { id, .. } = &event
                             && id != "-None-"
                         {
@@ -1270,7 +1270,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                         ))
                     }
                     "show_entity" => {
-                        if let Some(Some(event)) = events.into_iter().nth(0)
+                        if let Some(Some(event)) = events.into_iter().nth(2)
                             && let HoverEvent::ShowEntity { id, uuid, .. } = &event
                         {
                             if id == "-None-" {
@@ -1411,8 +1411,8 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                         )));
                                     }
                                     Uuid::from_u64_pair(
-                                        (nums[0] as u64) << 32 + (nums[1] as u64),
-                                        (nums[2] as u64) << 32 + (nums[3] as u64),
+                                        (nums[0] as u64) + (nums[1] as u64),
+                                        (nums[2] as u64) + (nums[3] as u64),
                                     )
                                 }
                                 _ => return Err(SnbtError::WrongContentType(String::from("uuid"))),
