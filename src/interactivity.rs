@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::TextComponent;
 #[cfg(feature = "custom")]
 use crate::custom::CustomData;
@@ -136,7 +138,7 @@ pub enum HoverEvent {
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         name: Option<Box<TextComponent>>,
         id: Cow<'static, str>,
-        uuid: [i32; 4],
+        uuid: Uuid,
     },
 }
 impl HoverEvent {
@@ -167,7 +169,7 @@ impl HoverEvent {
     /// * `name` - If [Some] the name to display
     pub fn show_entity<T: Into<Cow<'static, str>>, R: Into<TextComponent>>(
         id: T,
-        uuid: [i32; 4],
+        uuid: Uuid,
         name: Option<R>,
     ) -> Self {
         HoverEvent::ShowEntity {

@@ -20,6 +20,7 @@ use text_components::{
     resolving::TextResolutor,
     translation::{TranslatedMessage, Translation},
 };
+use uuid::Uuid;
 
 struct EmptyResolutor;
 impl TextResolutor for EmptyResolutor {
@@ -45,7 +46,7 @@ impl TextResolutor for EmptyResolutor {
                 .click_event(ClickEvent::suggest_command("/msg MrMelther "))
                 .hover_event(HoverEvent::show_entity(
                     "minecraft:player",
-                    [1, 1, 1, 1],
+                    Uuid::max(),
                     Some("MrMelther"),
                 )),
             #[cfg(feature = "nbt")]

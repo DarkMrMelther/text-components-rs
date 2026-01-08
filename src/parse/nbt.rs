@@ -4,11 +4,11 @@ use crate::{
     custom::CustomData,
     format::{Color, Format},
     interactivity::{ClickEvent, HoverEvent, Interactivity},
-    parse::parse_uuid_string,
     translation::TranslatedMessage,
 };
 
 use simdnbt::owned::{NbtCompound, NbtList, NbtTag};
+use uuid::Uuid;
 
 use std::borrow::Cow;
 
@@ -502,19 +502,16 @@ impl HoverEvent {
                 "show_entity" => {
                     let id = compound.get("id")?;
                     let uuid = compound.get("uuid")?;
-                    let uuid: Vec<i32> = match uuid {
-                        NbtTag::String(uuid) => parse_uuid_string(uuid.to_string())?.to_vec(),
-                        NbtTag::List(NbtList::Int(nums)) => {
+                    let uuid: Uuid = match uuid {
+                        NbtTag::String(uuid) => Uuid::parse_str(&uuid.to_string()).ok()?,
+                        NbtTag::IntArray(nums) | NbtTag::List(NbtList::Int(nums)) => {
                             if nums.len() != 4 {
                                 return None;
                             }
-                            nums.clone()
-                        }
-                        NbtTag::IntArray(nums) => {
-                            if nums.len() != 4 {
-                                return None;
-                            }
-                            nums.clone()
+                            Uuid::from_u64_pair(
+                                (nums[0] as u64) << 32 + (nums[1] as u64),
+                                (nums[2] as u64) << 32 + (nums[3] as u64),
+                            )
                         }
                         _ => return None,
                     };
@@ -529,7 +526,7 @@ impl HoverEvent {
                             Some(HoverEvent::ShowEntity {
                                 name,
                                 id: id.to_string().into(),
-                                uuid: [uuid[0], uuid[1], uuid[2], uuid[3]],
+                                uuid,
                             })
                         }
                         _ => None,

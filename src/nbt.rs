@@ -446,10 +446,17 @@ impl HoverEvent {
                 NbtTag::Compound(NbtCompound::from_values(compound))
             }
             HoverEvent::ShowEntity { name, id, uuid } => {
+                let uuid = uuid.as_u64_pair();
+                let uuid = vec![
+                    ((uuid.0 >> 32) & 0xFFFF) as i32,
+                    (uuid.0 & 0xFFFF) as i32,
+                    ((uuid.1 >> 32) & 0xFFFF) as i32,
+                    (uuid.1 & 0xFFFF) as i32,
+                ];
                 let mut compound = vec![
                     ("action".into(), NbtTag::String("show_entity".into())),
                     ("id".into(), id.to_nbt_tag()),
-                    ("uuid".into(), NbtTag::List(NbtList::Int(uuid.to_vec()))),
+                    ("uuid".into(), NbtTag::List(NbtList::Int(uuid))),
                 ];
                 if let Some(name) = name {
                     compound.push(("name".into(), name.build(resolutor, NbtBuilder).into()));

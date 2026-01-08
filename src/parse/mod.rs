@@ -8,6 +8,7 @@ use crate::{
     translation::TranslatedMessage,
 };
 use std::{borrow::Cow, error::Error, fmt::Display, iter::Peekable, ops::AddAssign, str::Chars};
+use uuid::Uuid;
 
 #[cfg(feature = "nbt")]
 pub mod nbt;
@@ -1278,7 +1279,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                     String::from("id"),
                                 ));
                             }
-                            if *uuid == [-1, -1, -1, -1] {
+                            if *uuid == Uuid::nil() {
                                 return Err(SnbtError::Required(
                                     String::from("\"show_entity\""),
                                     String::from("uuid"),
@@ -1340,7 +1341,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                         events[2] = Some(HoverEvent::ShowEntity {
                                             name: None,
                                             id: new_id,
-                                            uuid: [-1, -1, -1, -1],
+                                            uuid: Uuid::nil(),
                                         })
                                     }
                                 }
@@ -1387,14 +1388,14 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                 events[2] = Some(HoverEvent::ShowEntity {
                                     name: Some(Box::new(parse_body(Some(next), chars)?)),
                                     id: Cow::Borrowed("-None-"),
-                                    uuid: [-1, -1, -1, -1],
+                                    uuid: Uuid::nil(),
                                 })
                             }
                         },
                         "uuid" => {
                             let new_uuid = match next {
                                 '\'' | '"' => {
-                                    let Some(uuid) = parse_uuid_string(parse_string(next, chars)?)
+                                    let Ok(uuid) = Uuid::parse_str(&parse_string(next, chars)?)
                                     else {
                                         return Err(SnbtError::WrongContentType(String::from(
                                             "uuid",
@@ -1409,7 +1410,10 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                             "uuid",
                                         )));
                                     }
-                                    [nums[0], nums[1], nums[2], nums[3]]
+                                    Uuid::from_u64_pair(
+                                        (nums[0] as u64) << 32 + (nums[1] as u64),
+                                        (nums[2] as u64) << 32 + (nums[3] as u64),
+                                    )
                                 }
                                 _ => return Err(SnbtError::WrongContentType(String::from("uuid"))),
                             };
@@ -1438,23 +1442,6 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
         }
     }
     Err(SnbtError::EndedAbruptely(line!()))
-}
-
-fn parse_uuid_string<T: ToString>(uuid: T) -> Option<[i32; 4]> {
-    let uuid = uuid.to_string();
-    if uuid.chars().count() != 36 {
-        return None;
-    }
-    let uuid = uuid.split('-').collect::<Vec<&str>>().concat();
-    let (p1, rest) = uuid.split_at(8);
-    let (p2, rest) = rest.split_at(8);
-    let (p3, p4) = rest.split_at(8);
-    Some([
-        i32::from_str_radix(p1, 16).ok()?,
-        i32::from_str_radix(p2, 16).ok()?,
-        i32::from_str_radix(p3, 16).ok()?,
-        i32::from_str_radix(p4, 16).ok()?,
-    ])
 }
 
 fn parse_bool(first: char, chars: &mut Peekable<Chars>, content_type: &str) -> SnbtResult<bool> {
