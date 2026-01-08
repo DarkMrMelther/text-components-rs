@@ -448,10 +448,10 @@ impl HoverEvent {
             HoverEvent::ShowEntity { name, id, uuid } => {
                 let uuid = uuid.as_u64_pair();
                 let uuid = vec![
-                    ((uuid.0 >> 32) & 0xFFFF) as i32,
-                    (uuid.0 & 0xFFFF) as i32,
-                    ((uuid.1 >> 32) & 0xFFFF) as i32,
-                    (uuid.1 & 0xFFFF) as i32,
+                    ((uuid.0 >> 32) & 0xFFFFFFFF) as i32,
+                    (uuid.0 & 0xFFFFFFFF) as i32,
+                    ((uuid.1 >> 32) & 0xFFFFFFFF) as i32,
+                    (uuid.1 & 0xFFFFFFFF) as i32,
                 ];
                 let mut compound = vec![
                     ("action".into(), NbtTag::String("show_entity".into())),
