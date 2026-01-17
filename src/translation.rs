@@ -57,13 +57,13 @@ impl Translation<0> {
 impl<const ARGS: usize> Translation<ARGS> {
     /// Creates a new `TranslatedMessage` with the given arguments.
     #[must_use]
-    pub fn message(self, args: [impl Into<TextComponent>; ARGS]) -> TranslatedMessage {
+    pub fn message(&self, args: [impl Into<TextComponent>; ARGS]) -> TranslatedMessage {
         TranslatedMessage::new(self.0, Some(Box::new(args.map(Into::into))))
     }
 }
 
-impl From<Translation<0>> for TextComponent {
-    fn from(value: Translation<0>) -> Self {
+impl From<&Translation<0>> for TextComponent {
+    fn from(value: &Translation<0>) -> Self {
         value.msg().component()
     }
 }
