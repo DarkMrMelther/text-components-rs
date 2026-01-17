@@ -2,7 +2,7 @@ use crate::{
     TextComponent,
     content::{Content, Object},
     format::{Color, Format},
-    interactivity::Interactivity,
+    interactivity::{ClickEvent, Interactivity},
     resolving::{BuildTarget, NoResolutor, TextResolutor},
 };
 use colored::{ColoredString, Colorize};
@@ -11,6 +11,7 @@ use std::{
     borrow::Cow,
     fmt::{self, Debug, Display, Formatter, Pointer},
 };
+use supports_hyperlinks::supports_hyperlinks;
 
 const OBFUSCATION_CHARS: [char; 822] = [
     '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3',
@@ -209,6 +210,19 @@ impl BuildTarget for PrettyTextBuilder {
                 ((color >> 8) & 0xFF) as u8,
                 (color & 0xFF) as u8,
             );
+        }
+        if supports_hyperlinks() {
+            match &component.interactions.click {
+                Some(ClickEvent::OpenUrl { url }) => {
+                    final_text =
+                        format!("\x1b]8;;{}\x1b\\{}\x1b]8;;\x1b\\", url, final_text).into();
+                }
+                Some(ClickEvent::OpenFile { path }) => {
+                    final_text =
+                        format!("\x1b]8;;file://{}\x1b\\{}\x1b]8;;\x1b\\", path, final_text).into();
+                }
+                _ => (),
+            }
         }
 
         format!(

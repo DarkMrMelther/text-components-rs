@@ -27,7 +27,7 @@ impl TextResolutor for EmptyResolutor {
     fn translate(&self, key: &str) -> Option<String> {
         match key {
             "content" => Some(String::from(
-                "This is a test TextComponent!\n Color: %s\n Bold: %s\n Italic: %s\n Underline: %s\n Strikethrough: %s\n Obfuscated: %s\n Shadow Color: %s\n Translation: %s\n(All the green text is translated with arguments checked at compile time!)",
+                "This is a test TextComponent!\n Color: %s\n Bold: %s\n Italic: %s\n Underline: %s\n Strikethrough: %s\n Obfuscated: %s\n Shadow Color: %s\n Translation: %s\n Link: %s\n(All the green text is translated with arguments checked at compile time!)",
             )),
             "translated" => Some(String::from(
                 "This text is Translated! (Without compile time check!)",
@@ -90,7 +90,7 @@ impl CustomRegistry for EmptyResolutor {
     }
 }
 
-const CONTENT: Translation<8> = Translation("content");
+const CONTENT: Translation<9> = Translation("content");
 const RESOLUBLE: Translation<4> = Translation("resoluble");
 
 #[cfg(feature = "custom")]
@@ -137,6 +137,11 @@ fn main() {
                 .reset()
                 .shadow_color(255, 128, 0, 0),
             TranslatedMessage::new("translated", None).reset(),
+            "This text contains a link!"
+                .click_event(ClickEvent::open_url(
+                    "https://github.com/DarkMrMelther/text-components-rs",
+                ))
+                .reset(),
         ])
         .color(Color::Green)
         .bold(true)

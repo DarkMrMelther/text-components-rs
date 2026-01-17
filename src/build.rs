@@ -69,7 +69,7 @@ pub fn build_translations(path: &str) -> TokenStream {
         let const_name = Ident::new(&const_name_str, Span::call_site());
 
         stream.extend(quote! {
-            pub const #const_name: Translation<#param_count> = Translation(#key);
+            pub static #const_name: Translation<#param_count> = Translation(#key);
         });
     }
 
