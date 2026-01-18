@@ -211,18 +211,10 @@ impl BuildTarget for PrettyTextBuilder {
                 (color & 0xFF) as u8,
             );
         }
-        if supports_hyperlinks() {
-            match &component.interactions.click {
-                Some(ClickEvent::OpenUrl { url }) => {
-                    final_text =
-                        format!("\x1b]8;;{}\x1b\\{}\x1b]8;;\x1b\\", url, final_text).into();
-                }
-                Some(ClickEvent::OpenFile { path }) => {
-                    final_text =
-                        format!("\x1b]8;;file://{}\x1b\\{}\x1b]8;;\x1b\\", path, final_text).into();
-                }
-                _ => (),
-            }
+        if supports_hyperlinks()
+            && let Some(ClickEvent::OpenUrl { url }) = &component.interactions.click
+        {
+            final_text = format!("\x1b]8;;{}\x1b\\{}\x1b]8;;\x1b\\", url, final_text).into();
         }
 
         format!(

@@ -1089,15 +1089,6 @@ fn parse_click(chars: &mut Peekable<Chars>) -> SnbtResult<ClickEvent> {
                             String::from("url"),
                         ))
                     }
-                    "open_file" => {
-                        if let Some(Some(event)) = events.into_iter().nth(1) {
-                            return Ok(event);
-                        }
-                        Err(SnbtError::Required(
-                            String::from("\"open_file\""),
-                            String::from("path"),
-                        ))
-                    }
                     "run_command" => {
                         if let Some(Some(event)) = events.into_iter().nth(2) {
                             return Ok(event);
@@ -1179,11 +1170,6 @@ fn parse_click(chars: &mut Peekable<Chars>) -> SnbtResult<ClickEvent> {
                                 "url" => {
                                     events[0] = Some(ClickEvent::OpenUrl {
                                         url: Cow::Owned(parse_string(next, chars)?),
-                                    })
-                                }
-                                "path" => {
-                                    events[1] = Some(ClickEvent::OpenFile {
-                                        path: Cow::Owned(parse_string(next, chars)?),
                                     })
                                 }
                                 "command" => {

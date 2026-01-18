@@ -84,7 +84,7 @@ pub mod translation;
 /// component.to_pretty(resolutor);
 /// ```
 #[derive(Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct TextComponent {
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub content: Content,

@@ -6,7 +6,7 @@ use crate::custom::CustomData;
 use std::borrow::Cow;
 
 #[derive(Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct Interactivity {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub insertion: Option<Cow<'static, str>>,
@@ -53,14 +53,11 @@ impl Interactivity {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "action", rename_all = "snake_case"))]
 pub enum ClickEvent {
     OpenUrl {
         url: Cow<'static, str>,
-    },
-    OpenFile {
-        path: Cow<'static, str>,
     },
     RunCommand {
         command: Cow<'static, str>,
@@ -84,10 +81,6 @@ impl ClickEvent {
     /// Creates a [ClickEvent] that opens a url when triggered.
     pub fn open_url<T: Into<Cow<'static, str>>>(url: T) -> Self {
         ClickEvent::OpenUrl { url: url.into() }
-    }
-    /// Creates a [ClickEvent] that opens a file when triggered.
-    pub fn open_file<T: Into<Cow<'static, str>>>(path: T) -> Self {
-        ClickEvent::OpenFile { path: path.into() }
     }
     /// Creates a [ClickEvent] that runs a command when triggered.
     pub fn run_command<T: Into<Cow<'static, str>>>(command: T) -> Self {
@@ -121,7 +114,7 @@ impl ClickEvent {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "action", rename_all = "snake_case"))]
 pub enum HoverEvent {
     ShowText {

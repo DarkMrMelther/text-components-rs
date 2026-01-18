@@ -6,7 +6,7 @@ use crate::{
 use std::borrow::Cow;
 
 #[derive(Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum Content {
     Text(Cow<'static, str>),
@@ -30,7 +30,7 @@ impl From<String> for Content {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub enum Object {
     Atlas {
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -44,7 +44,7 @@ pub enum Object {
     },
 }
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ObjectPlayer {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name: Option<Cow<'static, str>>,
@@ -110,7 +110,7 @@ impl ObjectPlayer {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct PlayerProperties {
     pub name: Cow<'static, str>,
     pub value: Cow<'static, str>,
@@ -118,7 +118,7 @@ pub struct PlayerProperties {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub enum Resolvable {
     /// The selector must only accept 1 target
     /// #### Needs [resolution](TextComponent::resolve)
@@ -167,7 +167,7 @@ impl Resolvable {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum NbtSource {
     Entity(Cow<'static, str>),

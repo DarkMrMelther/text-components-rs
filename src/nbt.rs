@@ -475,10 +475,6 @@ impl ClickEvent {
                 values.push(("action".into(), "open_url".into()));
                 values.push(("url".into(), url.to_nbt_tag()));
             }
-            ClickEvent::OpenFile { path } => {
-                values.push(("action".into(), "open_file".into()));
-                values.push(("path".into(), path.to_nbt_tag()));
-            }
             ClickEvent::RunCommand { command } => {
                 values.push(("action".into(), "run_command".into()));
                 values.push(("command".into(), command.to_nbt_tag()));

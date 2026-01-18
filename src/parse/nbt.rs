@@ -554,16 +554,6 @@ impl ClickEvent {
                     }
                     None
                 }
-                "open_file" => {
-                    if let Some(tag) = compound.get("path")
-                        && let NbtTag::String(path) = tag
-                    {
-                        return Some(ClickEvent::OpenFile {
-                            path: path.to_string().into(),
-                        });
-                    }
-                    None
-                }
                 "run_command" => {
                     if let Some(tag) = compound.get("command")
                         && let NbtTag::String(command) = tag
