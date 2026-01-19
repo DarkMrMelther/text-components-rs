@@ -90,7 +90,7 @@ pub struct TextComponent {
     pub content: Content,
     #[cfg_attr(
         feature = "serde",
-        serde(skip_serializing_if = "Vec::is_empty", rename = "extra")
+        serde(skip_serializing_if = "Vec::is_empty", rename = "extra", default)
     )]
     pub children: Vec<TextComponent>,
     #[cfg_attr(feature = "serde", serde(flatten))]
@@ -104,7 +104,9 @@ impl TextComponent {
     /// Creates an empty [TextComponent], useful to make it the parent.
     pub const fn new() -> Self {
         TextComponent {
-            content: Content::Text(Cow::Borrowed("")),
+            content: Content::Text {
+                text: Cow::Borrowed(""),
+            },
             children: vec![],
             format: Format::new(),
             interactions: Interactivity::new(),
@@ -119,7 +121,9 @@ impl TextComponent {
     /// ```
     pub const fn const_plain(text: &'static str) -> Self {
         TextComponent {
-            content: Content::Text(Cow::Borrowed(text)),
+            content: Content::Text {
+                text: Cow::Borrowed(text),
+            },
             children: vec![],
             format: Format::new(),
             interactions: Interactivity::new(),
@@ -138,7 +142,7 @@ impl TextComponent {
     /// ```
     pub fn plain<T: Into<Cow<'static, str>>>(text: T) -> Self {
         TextComponent {
-            content: Content::Text(text.into()),
+            content: Content::Text { text: text.into() },
             children: vec![],
             format: Format::new(),
             interactions: Interactivity::new(),

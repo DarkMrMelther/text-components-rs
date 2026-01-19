@@ -275,7 +275,7 @@ impl Content {
         resolutor: &R,
     ) {
         match self {
-            Content::Text(cow) => compound.push(("text".into(), cow.to_nbt_tag())),
+            Content::Text { text } => compound.push(("text".into(), text.to_nbt_tag())),
             Content::Object(Object::Atlas { atlas, sprite }) => {
                 if let Some(atlas) = atlas {
                     compound.push(("atlas".into(), atlas.to_nbt_tag()));
@@ -323,7 +323,7 @@ impl Content {
                     compound.push(("hat".into(), NbtTag::Byte(0)));
                 }
             }
-            Content::Keybind(cow) => compound.push(("keybind".into(), cow.to_nbt_tag())),
+            Content::Keybind { keybind } => compound.push(("keybind".into(), keybind.to_nbt_tag())),
             Content::Translate(msg) => {
                 compound.push(("translate".into(), msg.key.to_nbt_tag()));
                 if let Some(fallback) = &msg.fallback {

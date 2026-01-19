@@ -8,16 +8,27 @@ use std::borrow::Cow;
 #[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct Interactivity {
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none", default)
+    )]
     pub insertion: Option<Cow<'static, str>>,
     #[cfg_attr(
         feature = "serde",
-        serde(skip_serializing_if = "Option::is_none", rename = "click_event")
+        serde(
+            skip_serializing_if = "Option::is_none",
+            rename = "click_event",
+            default
+        )
     )]
     pub click: Option<ClickEvent>,
     #[cfg_attr(
         feature = "serde",
-        serde(skip_serializing_if = "Option::is_none", rename = "hover_event")
+        serde(
+            skip_serializing_if = "Option::is_none",
+            rename = "hover_event",
+            default
+        )
     )]
     pub hover: Option<HoverEvent>,
 }
@@ -122,13 +133,22 @@ pub enum HoverEvent {
     },
     ShowItem {
         id: Cow<'static, str>,
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(skip_serializing_if = "Option::is_none", default)
+        )]
         count: Option<i32>,
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(skip_serializing_if = "Option::is_none", default)
+        )]
         components: Option<Cow<'static, str>>,
     },
     ShowEntity {
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(skip_serializing_if = "Option::is_none", default)
+        )]
         name: Option<Box<TextComponent>>,
         id: Cow<'static, str>,
         uuid: Uuid,

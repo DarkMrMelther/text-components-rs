@@ -70,7 +70,9 @@ impl Content {
         if let Some(tag) = compound.get("text")
             && let NbtTag::String(text) = tag
         {
-            return Some(Content::Text(text.to_string().into()));
+            return Some(Content::Text {
+                text: text.to_string().into(),
+            });
         }
         if let Some(tag) = compound.get("translate")
             && let NbtTag::String(key) = tag
@@ -103,7 +105,9 @@ impl Content {
         if let Some(tag) = compound.get("keybind")
             && let NbtTag::String(key) = tag
         {
-            return Some(Content::Keybind(key.to_string().into()));
+            return Some(Content::Keybind {
+                keybind: key.to_string().into(),
+            });
         }
         if let Some(tag) = compound.get("score")
             && let NbtTag::Compound(compound) = tag

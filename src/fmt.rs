@@ -71,7 +71,7 @@ impl TextBuilder {
         S::Result: From<String> + ToString + Display,
     {
         match &component.content {
-            Content::Text(content) => content.to_string().into(),
+            Content::Text { text } => text.to_string().into(),
             Content::Translate(message) => {
                 let translated = match resolutor.translate(&message.key) {
                     Some(t) => t,
@@ -110,7 +110,7 @@ impl TextBuilder {
                 }
                 return builded_parts.concat().into();
             }
-            Content::Keybind(key) => format!("[Keybind: {}]", key).into(),
+            Content::Keybind { keybind } => format!("[Keybind: {}]", keybind).into(),
             Content::Object(Object::Atlas { sprite, .. }) => format!("[Object: {}]", sprite).into(),
             Content::Object(Object::Player { player, .. }) => {
                 if let Some(name) = &player.name {
@@ -293,8 +293,8 @@ impl Debug for TextComponent {
 impl Debug for Content {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Text(arg0) => Debug::fmt(&arg0, f),
-            Self::Keybind(arg0) => f.debug_tuple("Keybind").field(arg0).finish(),
+            Self::Text { text } => Debug::fmt(&text, f),
+            Self::Keybind { keybind } => f.debug_tuple("Keybind").field(keybind).finish(),
             #[cfg(feature = "custom")]
             Self::Custom(arg0) => Debug::fmt(&arg0, f),
             Self::Translate(arg0) => Debug::fmt(&arg0, f),

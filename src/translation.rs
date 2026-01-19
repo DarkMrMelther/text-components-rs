@@ -6,11 +6,14 @@ use std::borrow::Cow;
 pub struct TranslatedMessage {
     #[cfg_attr(feature = "serde", serde(rename = "translate"))]
     pub key: Cow<'static, str>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none", default)
+    )]
     pub fallback: Option<Cow<'static, str>>,
     #[cfg_attr(
         feature = "serde",
-        serde(skip_serializing_if = "Option::is_none", rename = "with")
+        serde(skip_serializing_if = "Option::is_none", rename = "with", default)
     )]
     pub args: Option<Box<[TextComponent]>>,
 }

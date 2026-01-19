@@ -7,25 +7,28 @@ use std::borrow::Cow;
 
 #[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case", untagged))]
 pub enum Content {
-    Text(Cow<'static, str>),
-    Keybind(Cow<'static, str>),
+    Text {
+        text: Cow<'static, str>,
+    },
+    Translate(TranslatedMessage),
+    Keybind {
+        keybind: Cow<'static, str>,
+    },
     /// #### Needs [resolution](TextComponent::resolve)
     #[cfg(feature = "custom")]
     Custom(CustomData),
-    #[cfg_attr(feature = "serde", serde(untagged))]
-    Translate(TranslatedMessage),
-    #[cfg_attr(feature = "serde", serde(untagged))]
     Object(Object),
-    #[cfg_attr(feature = "serde", serde(untagged))]
     /// #### Needs [resolution](TextComponent::resolve)
     Resolvable(Resolvable),
 }
 
 impl From<String> for Content {
     fn from(value: String) -> Self {
-        Content::Text(Cow::Owned(value))
+        Content::Text {
+            text: Cow::Owned(value),
+        }
     }
 }
 
@@ -33,26 +36,44 @@ impl From<String> for Content {
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub enum Object {
     Atlas {
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(skip_serializing_if = "Option::is_none", default)
+        )]
         atlas: Option<Cow<'static, str>>,
         sprite: Cow<'static, str>,
     },
     Player {
         player: ObjectPlayer,
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Clone::clone"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(skip_serializing_if = "Clone::clone", default)
+        )]
         hat: bool,
     },
 }
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ObjectPlayer {
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none", default)
+    )]
     pub name: Option<Cow<'static, str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none", default)
+    )]
     pub id: Option<[i32; 4]>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none", default)
+    )]
     pub texture: Option<Cow<'static, str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Vec::is_empty", default)
+    )]
     pub properties: Vec<PlayerProperties>,
 }
 impl ObjectPlayer {
@@ -132,6 +153,7 @@ pub enum Resolvable {
     #[cfg_attr(feature = "serde", serde(untagged))]
     Entity {
         selector: Cow<'static, str>,
+        #[cfg_attr(feature = "serde", serde(default = "Resolvable::entity_separator"))]
         separator: Box<TextComponent>,
     },
     /// #### Needs [resolution](TextComponent::resolve)
@@ -141,16 +163,23 @@ pub enum Resolvable {
         path: Cow<'static, str>,
         // This meants to represent that this component should be
         // replaced with the one inside the nbt selected if possible
+        #[cfg_attr(
+            feature = "serde",
+            serde(skip_serializing_if = "Option::is_none", default)
+        )]
         interpret: Option<bool>,
+        #[cfg_attr(feature = "serde", serde(default = "Resolvable::nbt_separator"))]
         separator: Box<TextComponent>,
-        #[cfg_attr(feature = "serde", serde(flatten))]
+        #[cfg_attr(feature = "serde", serde(flatten, default = "NbtSource::Entity"))]
         source: NbtSource,
     },
 }
 impl Resolvable {
     pub fn entity_separator() -> Box<TextComponent> {
         Box::new(TextComponent {
-            content: Content::Text(Cow::Borrowed(", ")),
+            content: Content::Text {
+                text: Cow::Borrowed(", "),
+            },
             format: Format {
                 color: Some(crate::format::Color::Gray),
                 ..Default::default()
@@ -160,7 +189,9 @@ impl Resolvable {
     }
     pub fn nbt_separator() -> Box<TextComponent> {
         Box::new(TextComponent {
-            content: Content::Text(Cow::Borrowed(", ")),
+            content: Content::Text {
+                text: Cow::Borrowed(", "),
+            },
             ..Default::default()
         })
     }

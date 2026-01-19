@@ -229,7 +229,9 @@ fn match_content(
         }
         "text" => {
             if first == '\'' || first == '"' {
-                compound.contents[0] = Some(Content::Text(Cow::Owned(parse_string(first, chars)?)));
+                compound.contents[0] = Some(Content::Text {
+                    text: Cow::Owned(parse_string(first, chars)?),
+                });
                 return Ok(());
             }
             Err(SnbtError::WrongContentType(name.to_string()))
@@ -331,8 +333,9 @@ fn match_content(
         }
         "keybind" => {
             if first == '\'' || first == '"' {
-                compound.contents[4] =
-                    Some(Content::Keybind(Cow::Owned(parse_string(first, chars)?)));
+                compound.contents[4] = Some(Content::Keybind {
+                    keybind: Cow::Owned(parse_string(first, chars)?),
+                });
                 return Ok(());
             }
             Err(SnbtError::WrongContentType(name.to_string()))

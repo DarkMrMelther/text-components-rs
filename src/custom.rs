@@ -5,7 +5,10 @@ use std::borrow::Cow;
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct CustomData {
     pub id: Cow<'static, str>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Payload::is_empty"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Payload::is_empty", default)
+    )]
     pub payload: Payload,
 }
 
@@ -18,6 +21,11 @@ pub enum Payload {
 impl Payload {
     pub fn is_empty(&self) -> bool {
         self == &Payload::Empty
+    }
+}
+impl Default for Payload {
+    fn default() -> Self {
+        Payload::Empty
     }
 }
 
