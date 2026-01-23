@@ -5,10 +5,10 @@ use crate::{
     content::{Content, Object},
     format::{Color, Format},
     interactivity::{ClickEvent, HoverEvent, Interactivity},
-    resolving::{BuildTarget, TextResolutor},
+    resolving::{BuildTarget, NoResolutor, TextResolutor},
 };
 use simdnbt::{
-    Mutf8String, ToNbtTag,
+    FromNbtTag, Mutf8String, ToNbtTag,
     owned::{BaseNbt, Nbt, NbtCompound, NbtList, NbtTag},
 };
 use std::ops::Deref as _;
@@ -505,6 +505,20 @@ impl ClickEvent {
             }
         };
         NbtTag::Compound(NbtCompound::from_values(values))
+    }
+}
+
+impl ToNbtTag for TextComponent {
+    fn to_nbt_tag(self) -> NbtTag {
+        match NbtBuilder.build_component(&NoResolutor, &self) {
+            Nbt::Some(base_nbt) => base_nbt.as_compound().to_nbt_tag(),
+            Nbt::None => panic!("A Text Component always should have something inside"),
+        }
+    }
+}
+impl FromNbtTag for TextComponent {
+    fn from_nbt_tag(tag: simdnbt::borrow::NbtTag) -> Option<Self> {
+        TextComponent::from_nbt(&tag.to_owned())
     }
 }
 
