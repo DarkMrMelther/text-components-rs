@@ -83,7 +83,7 @@ pub mod translation;
 /// // Build with RichTextBuilder a decorated String
 /// component.to_pretty(resolutor);
 /// ```
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct TextComponent {
     #[cfg_attr(feature = "serde", serde(flatten))]

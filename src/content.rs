@@ -5,7 +5,7 @@ use crate::{
 };
 use std::borrow::Cow;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case", untagged))]
 pub enum Content {
@@ -32,7 +32,7 @@ impl From<String> for Content {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub enum Object {
     Atlas {
@@ -52,7 +52,7 @@ pub enum Object {
         hat: bool,
     },
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ObjectPlayer {
     #[cfg_attr(
@@ -130,7 +130,7 @@ impl ObjectPlayer {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct PlayerProperties {
     pub name: Cow<'static, str>,
@@ -138,7 +138,7 @@ pub struct PlayerProperties {
     pub signature: Option<Cow<'static, str>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub enum Resolvable {
     /// The selector must only accept 1 target
@@ -197,7 +197,7 @@ impl Resolvable {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum NbtSource {

@@ -5,7 +5,7 @@ use crate::TextComponent;
 use crate::custom::CustomData;
 use std::borrow::Cow;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct Interactivity {
     #[cfg_attr(
@@ -63,7 +63,7 @@ impl Interactivity {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "action", rename_all = "snake_case"))]
 pub enum ClickEvent {
@@ -124,7 +124,7 @@ impl ClickEvent {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "action", rename_all = "snake_case"))]
 pub enum HoverEvent {

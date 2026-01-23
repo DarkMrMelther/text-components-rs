@@ -1,7 +1,7 @@
 use crate::TextComponent;
 use std::borrow::Cow;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct CustomData {
     pub id: Cow<'static, str>,
@@ -12,7 +12,7 @@ pub struct CustomData {
     pub payload: Payload,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub enum Payload {
     Empty,

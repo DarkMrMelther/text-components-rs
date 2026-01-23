@@ -1,7 +1,7 @@
 use colored::{ColoredString, Colorize};
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Display};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct Format {
     #[cfg_attr(
@@ -172,7 +172,7 @@ impl Format {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Color {
@@ -230,6 +230,29 @@ impl Color {
             Color::Yellow => text.into().bright_yellow(),
             Color::White => text.into().bright_white(),
             Color::Rgb(r, g, b) => text.into().truecolor(*r, *g, *b),
+        }
+    }
+}
+impl Display for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Color::Aqua => write!(f, "aqua"),
+            Color::Black => write!(f, "black"),
+            Color::Blue => write!(f, "blue"),
+            Color::DarkAqua => write!(f, "dark_aqua"),
+            Color::DarkBlue => write!(f, "dark_blue"),
+            Color::DarkGray => write!(f, "dark_gray"),
+            Color::DarkGreen => write!(f, "dark_green"),
+            Color::DarkPurple => write!(f, "dark_purple"),
+            Color::DarkRed => write!(f, "dark_red"),
+            Color::Gold => write!(f, "gold"),
+            Color::Gray => write!(f, "gray"),
+            Color::Green => write!(f, "green"),
+            Color::LightPurple => write!(f, "light_purple"),
+            Color::Red => write!(f, "red"),
+            Color::White => write!(f, "white"),
+            Color::Yellow => write!(f, "yellow"),
+            Color::Rgb(r, g, b) => write!(f, "#{:02X}{:02X}{:02X}", r, g, b),
         }
     }
 }

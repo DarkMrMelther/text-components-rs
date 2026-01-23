@@ -1,7 +1,7 @@
 use crate::TextComponent;
 use std::borrow::Cow;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct TranslatedMessage {
     #[cfg_attr(feature = "serde", serde(rename = "translate"))]
