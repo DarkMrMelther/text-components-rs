@@ -1,7 +1,4 @@
-use simdnbt::{
-    Mutf8String, ToNbtTag,
-    owned::{BaseNbt, Nbt, NbtCompound, NbtTag},
-};
+use simdnbt::owned::{BaseNbt, Nbt, NbtCompound, NbtTag};
 use text_components::{
     Modifier, TextComponent,
     format::Color,
@@ -40,10 +37,6 @@ fn main() -> Result<(), String> {
             )),
         ])
         .build(&NoResolutor, NbtBuilder);
-    let nbt = match nbt {
-        Nbt::Some(base_nbt) => base_nbt.as_compound().clone().to_nbt_tag(),
-        Nbt::None => NbtTag::String(Mutf8String::new()),
-    };
     println!("{:?}", nbt);
     let component =
         TextComponent::from_nbt(&nbt).ok_or(String::from("Cannot recompose the TextComponent!"))?;

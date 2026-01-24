@@ -16,12 +16,12 @@ use std::ops::Deref as _;
 pub struct NbtBuilder;
 
 impl BuildTarget for NbtBuilder {
-    type Result = Nbt;
+    type Result = NbtTag;
     fn build_component<R: TextResolutor + ?Sized>(
         &self,
         resolutor: &R,
         component: &TextComponent,
-    ) -> Nbt {
+    ) -> NbtTag {
         let mut items = vec![];
         component.content.to_compound(&mut items, self, resolutor);
         component.format.to_compound(&mut items);
@@ -33,15 +33,16 @@ impl BuildTarget for NbtBuilder {
                     component
                         .children
                         .iter()
-                        .map(|nbt| match self.build_component(resolutor, nbt) {
-                            Nbt::Some(base) => base.as_compound(),
-                            Nbt::None => NbtCompound::from_values(vec![]),
+                        .map(|nbt| {
+                            self.build_component(resolutor, nbt)
+                                .into_compound()
+                                .unwrap()
                         })
                         .collect(),
                 )),
             ));
         }
-        Nbt::Some(BaseNbt::new("", NbtCompound::from_values(items)))
+        NbtTag::Compound(NbtCompound::from_values(items))
     }
 }
 
@@ -334,9 +335,11 @@ impl Content {
                         "with".into(),
                         NbtTag::List(NbtList::Compound(
                             args.iter()
-                                .map(|arg| match target.build_component(resolutor, arg) {
-                                    Nbt::Some(base) => base.as_compound(),
-                                    Nbt::None => NbtCompound::new(),
+                                .map(|nbt| {
+                                    target
+                                        .build_component(resolutor, nbt)
+                                        .into_compound()
+                                        .unwrap()
                                 })
                                 .collect(),
                         )),
@@ -510,10 +513,12 @@ impl ClickEvent {
 
 impl ToNbtTag for TextComponent {
     fn to_nbt_tag(self) -> NbtTag {
-        match NbtBuilder.build_component(&NoResolutor, &self) {
-            Nbt::Some(base_nbt) => base_nbt.as_compound().to_nbt_tag(),
-            Nbt::None => panic!("A Text Component always should have something inside"),
-        }
+        NbtBuilder.build_component(&NoResolutor, &self)
+    }
+}
+impl<'a> ToNbtTag for &'a TextComponent {
+    fn to_nbt_tag(self) -> NbtTag {
+        NbtBuilder.build_component(&NoResolutor, &self)
     }
 }
 impl FromNbtTag for TextComponent {

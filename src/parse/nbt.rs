@@ -21,18 +21,6 @@ impl TextComponent {
                 }
                 Some(TextComponent::plain(string.to_string()))
             }
-            NbtTag::List(list) => {
-                use crate::Modifier;
-
-                let mut children = vec![];
-                for child in list.as_nbt_tags() {
-                    let child = TextComponent::from_nbt(&child);
-                    if child.is_some() {
-                        children.push(child.unwrap());
-                    }
-                }
-                Some(TextComponent::new().add_children(children))
-            }
             NbtTag::Compound(compound) => {
                 if let Some(tag) = compound.get("") {
                     match tag {

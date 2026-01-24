@@ -84,7 +84,15 @@ fn parse_body(first: Option<char>, chars: &mut Peekable<Chars>) -> SnbtResult<Te
     match char {
         '"' => return parse_string('"', chars).map(|text| TextComponent::plain(text)),
         '\'' => return parse_string('\'', chars).map(|text| TextComponent::plain(text)),
-        '[' => return Ok(TextComponent::new().add_children(parse_vec(chars)?)),
+        '[' => {
+            let mut components = parse_vec(chars)?.into_iter();
+            let first = components.next().ok_or(SnbtError::Required(
+                "Lists".to_string(),
+                "at least one component".to_string(),
+            ))?;
+            let children = components.collect();
+            return Ok(first.add_children(children));
+        }
         '{' => return parse_compound(chars),
         _ => (),
     }
@@ -117,9 +125,10 @@ fn parse_string(opener: char, chars: &mut Peekable<Chars>) -> SnbtResult<String>
 
 fn parse_vec(chars: &mut Peekable<Chars>) -> SnbtResult<Vec<TextComponent>> {
     let mut component = vec![];
-    if let Ok(child) = parse_body(None, chars) {
-        component.push(child);
-    }
+    let Ok(child) = parse_body(None, chars) else {
+        return Err(SnbtError::UnfinishedComponent(line!()));
+    };
+    component.push(child);
     while let Some(char) = chars.next() {
         if char.is_whitespace() {
             continue;
@@ -159,6 +168,7 @@ fn parse_compound(chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
     let mut compound = CompoundParts::new();
     let mut format = Format::new();
     let mut interactions = Interactivity::new();
+    let mut children = vec![];
     let mut name = String::new();
     let mut in_name = true;
     while let Some(char) = chars.next() {
@@ -169,7 +179,7 @@ fn parse_compound(chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
             '}' => {
                 return Ok(TextComponent {
                     content: retrieve_content(compound)?,
-                    children: vec![],
+                    children,
                     format,
                     interactions,
                 });
@@ -196,6 +206,11 @@ fn parse_compound(chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
                 }
                 if first == ' ' {
                     return Err(SnbtError::EndedAbruptely(line!()));
+                }
+                if name == "extra" {
+                    children = parse_vec(chars)?;
+                    name = String::new();
+                    continue;
                 }
                 match_content(&name, &mut compound, first, chars, &mut unknown)?;
                 match_format(&name, &mut format, first, chars, &mut unknown)?;
