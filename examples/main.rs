@@ -131,7 +131,7 @@ fn main() {
             "This text is Bold!".reset().bold(true),
             "This text is Italic!".reset().italic(true),
             "This text is Underlined!".reset().underlined(true),
-            "This text is Strikethough!".reset().strikethrough(true),
+            "This text is Strikethrough!".reset().strikethrough(true),
             "This text is Obfuscated!".reset().obfuscated(true),
             "This text is ShadowcoloRED!"
                 .reset()

@@ -93,13 +93,11 @@ impl TextComponent {
             NbtTag::List(nbt_list) => {
                 let component = "[".color(Color::White);
                 let mut children = vec![];
-                let mut i = 0;
-                for tag in nbt_list.as_nbt_tags() {
+                for (i, tag) in nbt_list.as_nbt_tags().into_iter().enumerate() {
                     children.push(TextComponent::nbt_display(tag));
                     if i + 1 != nbt_list.as_nbt_tags().len() {
                         children.push(", ".into());
                     }
-                    i += 1;
                 }
                 children.push(TextComponent::plain("]"));
                 component.add_children(children)
@@ -107,9 +105,8 @@ impl TextComponent {
             NbtTag::Compound(compound) => {
                 let component = "{".color(Color::White);
                 let mut children = vec![];
-                let mut i = 0;
                 let len = compound.len();
-                for (name, tag) in compound {
+                for (i, (name, tag)) in compound.into_iter().enumerate() {
                     if !name.is_empty() {
                         children.push(name.to_string().color(Color::Aqua));
                         children.push(": ".into());
@@ -120,7 +117,6 @@ impl TextComponent {
                     if i + 1 != len {
                         children.push(", ".into());
                     }
-                    i += 1;
                 }
                 children.push(TextComponent::plain("}"));
                 component.add_children(children)
@@ -398,7 +394,7 @@ impl Format {
             compound.push(("obfuscated".into(), NbtTag::Byte(value as i8)));
         }
         if let Some(color) = self.shadow_color {
-            compound.push(("shadow_color".into(), NbtTag::Long(color as i64)));
+            compound.push(("shadow_color".into(), NbtTag::Long(color)));
         }
     }
 }
@@ -429,7 +425,7 @@ impl HoverEvent {
         match self {
             HoverEvent::ShowText { value } => NbtTag::Compound(NbtCompound::from_values(vec![
                 ("action".into(), NbtTag::String("show_text".into())),
-                ("value".into(), value.build(resolutor, NbtBuilder).into()),
+                ("value".into(), value.build(resolutor, NbtBuilder)),
             ])),
             HoverEvent::ShowItem {
                 id,
@@ -462,7 +458,7 @@ impl HoverEvent {
                     ("uuid".into(), NbtTag::List(NbtList::Int(uuid))),
                 ];
                 if let Some(name) = name {
-                    compound.push(("name".into(), name.build(resolutor, NbtBuilder).into()));
+                    compound.push(("name".into(), name.build(resolutor, NbtBuilder)));
                 }
                 NbtTag::Compound(NbtCompound::from_values(compound))
             }
@@ -516,9 +512,9 @@ impl ToNbtTag for TextComponent {
         NbtBuilder.build_component(&NoResolutor, &self)
     }
 }
-impl<'a> ToNbtTag for &'a TextComponent {
+impl ToNbtTag for &TextComponent {
     fn to_nbt_tag(self) -> NbtTag {
-        NbtBuilder.build_component(&NoResolutor, &self)
+        NbtBuilder.build_component(&NoResolutor, self)
     }
 }
 impl FromNbtTag for TextComponent {

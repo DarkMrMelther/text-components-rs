@@ -20,10 +20,10 @@ pub fn build_translations(path: &str) -> TokenStream {
     println!("cargo:rerun-if-changed={path}");
 
     let lang_file =
-        fs::read_to_string(&path).expect(&format!("Failed to read {path} language file"));
+        fs::read_to_string(path).unwrap_or_else(|_| panic!("Failed to read {path} language file"));
 
     let translations: serde_json::Map<String, Value> =
-        serde_json::from_str(&lang_file).expect(&format!("Failed to parse {path}"));
+        serde_json::from_str(&lang_file).unwrap_or_else(|_| panic!("Failed to parse {path}"));
 
     let mut stream = TokenStream::new();
 

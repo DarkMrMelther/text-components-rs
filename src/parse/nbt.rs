@@ -36,16 +36,16 @@ impl TextComponent {
                 {
                     for child in list.as_nbt_tags() {
                         let child = TextComponent::from_nbt(&child);
-                        if child.is_some() {
-                            children.push(child.unwrap());
+                        if let Some(child) = child {
+                            children.push(child);
                         }
                     }
                 }
                 Some(TextComponent {
-                    content: Content::from_compound(&compound)?,
+                    content: Content::from_compound(compound)?,
                     children,
-                    format: Format::from_compound(&compound),
-                    interactions: Interactivity::from_compound(&compound),
+                    format: Format::from_compound(compound),
+                    interactions: Interactivity::from_compound(compound),
                 })
             }
             _ => None,
@@ -118,7 +118,7 @@ impl Content {
             if let Some(tag) = compound.get("separator")
                 && let Some(component) = TextComponent::from_nbt(tag)
             {
-                separator = Box::new(component);
+                *separator = component;
             };
             return Some(Content::Resolvable(Resolvable::Entity {
                 selector: selector.to_string().into(),
@@ -148,7 +148,7 @@ impl Content {
             if let Some(tag) = compound.get("separator")
                 && let Some(component) = TextComponent::from_nbt(tag)
             {
-                separator = Box::new(component);
+                *separator = component;
             };
             if let Some(tag) = compound.get("source")
                 && let NbtTag::String(s_type) = tag
@@ -403,7 +403,7 @@ impl Format {
             match tag {
                 NbtTag::Short(n) => format.shadow_color = Some(*n as i64),
                 NbtTag::Int(n) => format.shadow_color = Some(*n as i64),
-                NbtTag::Long(n) => format.shadow_color = Some(*n as i64),
+                NbtTag::Long(n) => format.shadow_color = Some(*n),
                 NbtTag::List(list) => {
                     let list = list.as_nbt_tags();
                     if list.len() == 4 {

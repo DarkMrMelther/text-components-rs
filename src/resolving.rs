@@ -7,7 +7,7 @@ use crate::{
     content::{Content, Resolvable},
 };
 
-/// Recomendation: Implement this on the World and Player
+/// Recommendation: Implement this on the World and Player
 pub trait TextResolutor {
     fn resolve_other(&self, content: &Content) -> TextComponent {
         TextComponent::from(content.clone())
@@ -24,7 +24,7 @@ pub trait TextResolutor {
             }
         }
         let mut counter = 1;
-        for (pos, _) in text.match_indices(&format!("%s")) {
+        for (pos, _) in text.match_indices("%s") {
             positions.push((pos, counter, 2usize));
             counter += 1;
         }
@@ -113,10 +113,10 @@ impl TextComponent {
                 });
             }
             Content::Resolvable(Resolvable::Entity { separator, .. }) => {
-                *separator = Box::new(separator.resolve(resolutor));
+                **separator = separator.resolve(resolutor);
             }
             Content::Resolvable(Resolvable::NBT { separator, .. }) => {
-                *separator = Box::new(separator.resolve(resolutor));
+                **separator = separator.resolve(resolutor);
             }
             _ => (),
         }

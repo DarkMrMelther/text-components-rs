@@ -12,20 +12,16 @@ pub struct CustomData {
     pub payload: Payload,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub enum Payload {
+    #[default]
     Empty,
     // More payload data
 }
 impl Payload {
     pub fn is_empty(&self) -> bool {
         self == &Payload::Empty
-    }
-}
-impl Default for Payload {
-    fn default() -> Self {
-        Payload::Empty
     }
 }
 

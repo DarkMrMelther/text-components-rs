@@ -81,14 +81,14 @@ impl TextBuilder {
                     },
                 };
                 let parts = resolutor.split_translation(translated);
-                let mut builded_parts = vec![];
+                let mut built_parts = vec![];
                 for (part, pos) in parts {
                     let component_part = TextComponent {
                         content: part.into(),
                         format: component.format.clone(),
                         ..TextComponent::new()
                     };
-                    builded_parts.push(
+                    built_parts.push(
                         target
                             .build_component(resolutor, &component_part)
                             .to_string(),
@@ -104,11 +104,10 @@ impl TextBuilder {
                             format: arg.format.mix(&component.format),
                             interactions: arg.interactions.clone(),
                         };
-                        builded_parts
-                            .push(target.build_component(resolutor, &arg_part).to_string());
+                        built_parts.push(target.build_component(resolutor, &arg_part).to_string());
                     }
                 }
-                return builded_parts.concat().into();
+                built_parts.concat().into()
             }
             Content::Keybind { keybind } => format!("[Keybind: {}]", keybind).into(),
             Content::Object(Object::Atlas { sprite, .. }) => format!("[Object: {}]", sprite).into(),
@@ -134,7 +133,7 @@ impl BuildTarget for TextBuilder {
         resolutor: &R,
         component: &TextComponent,
     ) -> String {
-        Self::stringify_content(self, resolutor, &component)
+        Self::stringify_content(self, resolutor, component)
             + &component
                 .children
                 .iter()
@@ -152,7 +151,7 @@ impl BuildTarget for PrettyTextBuilder {
         resolutor: &R,
         component: &TextComponent,
     ) -> ColoredString {
-        let mut final_text = TextBuilder::stringify_content(self, resolutor, &component);
+        let mut final_text = TextBuilder::stringify_content(self, resolutor, component);
 
         if let Content::Translate(_) = component.content {
             return format!(
@@ -179,7 +178,6 @@ impl BuildTarget for PrettyTextBuilder {
         if let Some(true) = component.format.obfuscated {
             let obfuscated = final_text
                 .chars()
-                .into_iter()
                 .map(|char| {
                     if !char.is_whitespace() && !char.is_control() {
                         return OBFUSCATION_CHARS[random_range(0..822)];
@@ -321,22 +319,22 @@ impl Debug for Format {
         let mut items = vec![];
         if let Some(color) = &self.color {
             items.push(match color {
-                crate::format::Color::Aqua => format!(" color: Aqua"),
-                crate::format::Color::Black => format!(" color: Black"),
-                crate::format::Color::Blue => format!(" color: Blue"),
-                crate::format::Color::DarkAqua => format!(" color: Dark Aqua"),
-                crate::format::Color::DarkBlue => format!(" color: Dark Blue"),
-                crate::format::Color::DarkGray => format!(" color: Dark Gray"),
-                crate::format::Color::DarkGreen => format!(" color: Dark Green"),
-                crate::format::Color::DarkPurple => format!(" color: Dark Purple"),
-                crate::format::Color::DarkRed => format!(" color: Dark Red"),
-                crate::format::Color::Gold => format!(" color: Gold"),
-                crate::format::Color::Gray => format!(" color: Gray"),
-                crate::format::Color::Green => format!(" color: Green"),
-                crate::format::Color::LightPurple => format!(" color: Light Purple"),
-                crate::format::Color::Red => format!(" color: Red"),
-                crate::format::Color::White => format!(" color: White"),
-                crate::format::Color::Yellow => format!(" color: Yellow"),
+                crate::format::Color::Aqua => " color: Aqua".to_string(),
+                crate::format::Color::Black => " color: Black".to_string(),
+                crate::format::Color::Blue => " color: Blue".to_string(),
+                crate::format::Color::DarkAqua => " color: Dark Aqua".to_string(),
+                crate::format::Color::DarkBlue => " color: Dark Blue".to_string(),
+                crate::format::Color::DarkGray => " color: Dark Gray".to_string(),
+                crate::format::Color::DarkGreen => " color: Dark Green".to_string(),
+                crate::format::Color::DarkPurple => " color: Dark Purple".to_string(),
+                crate::format::Color::DarkRed => " color: Dark Red".to_string(),
+                crate::format::Color::Gold => " color: Gold".to_string(),
+                crate::format::Color::Gray => " color: Gray".to_string(),
+                crate::format::Color::Green => " color: Green".to_string(),
+                crate::format::Color::LightPurple => " color: Light Purple".to_string(),
+                crate::format::Color::Red => " color: Red".to_string(),
+                crate::format::Color::White => " color: White".to_string(),
+                crate::format::Color::Yellow => " color: Yellow".to_string(),
                 crate::format::Color::Rgb(r, g, b) => format!(" color: [{r}, {g}, {b}]"),
             });
         }
@@ -346,19 +344,19 @@ impl Debug for Format {
             items.push(format!(" font: \"{font}\""));
         }
         if let Some(true) = self.bold {
-            items.push(format!(" bold"));
+            items.push(" bold".to_string());
         }
         if let Some(true) = self.italic {
-            items.push(format!(" italic"));
+            items.push(" italic".to_string());
         }
         if let Some(true) = self.underlined {
-            items.push(format!(" underlined"));
+            items.push(" underlined".to_string());
         }
         if let Some(true) = self.strikethrough {
-            items.push(format!(" strikethrough"));
+            items.push(" strikethrough".to_string());
         }
         if let Some(true) = self.obfuscated {
-            items.push(format!(" obfuscated"));
+            items.push(" obfuscated".to_string());
         }
         if let Some(color) = self.shadow_color {
             items.push(format!(

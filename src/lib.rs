@@ -149,7 +149,7 @@ impl TextComponent {
         }
     }
 
-    /// Creates a [TextComponent] of a [TranslatedMessage], it's recomended using a compiled
+    /// Creates a [TextComponent] of a [TranslatedMessage], it's recommended using a compiled
     /// [Translation](crate::translation::Translation) which forces you to give it the right amount of arguments.
     /// ## Examples
     /// #### For a translation without arguments:
@@ -219,8 +219,8 @@ impl TextComponent {
     }
 
     /// Creates a [TextComponent] that will contain the value of a Scoreboard.
-    /// * `selector` - Describes the player to get the data (Needs to be only 1 entity)
-    /// The character '*' can be used to show the receiver player data
+    /// * `selector` - Describes the player to get the data (Needs to be only 1 entity)\
+    ///   The character '*' can be used to show the receiver player data
     /// * `objective` - The internal name of the scoreboard to show
     /// ## Example
     /// ```
@@ -332,7 +332,7 @@ pub trait Modifier {
     type Output;
     /// Adds a child at the end of a text component
     fn add_child<T: Into<TextComponent>>(self, child: T) -> Self::Output;
-    /// Appends a [vec] of [Into]<[TextComponent]> as childs of this component
+    /// Appends a [vec] of [Into]<[TextComponent]> as children of this component
     fn add_children<T: Into<TextComponent>>(self, children: Vec<T>) -> Self::Output;
     /// Sets the Shift+Click chat insertion string
     fn insertion<T: Into<Cow<'static, str>>>(self, insertion: T) -> Self::Output;

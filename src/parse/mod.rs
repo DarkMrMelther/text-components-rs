@@ -39,7 +39,7 @@ impl Display for SnbtError {
                 "A component finished at some point, blocking the parsing. (Line: {i})"
             ),
             SnbtError::WrongContentType(content) => {
-                write!(f, "Unvalid content for the value of {content}.")
+                write!(f, "Invalid content for the value of {content}.")
             }
             SnbtError::UnknownKey(key) => write!(f, "The key \"{key}\" is unknown."),
             SnbtError::MissingContent => write!(f, "There's a component without any content."),
@@ -67,7 +67,7 @@ fn parse_body(first: Option<char>, chars: &mut Peekable<Chars>) -> SnbtResult<Te
         Some(first) => first,
         None => {
             let mut first = ' ';
-            while let Some(char) = chars.next() {
+            for char in chars.by_ref() {
                 if char.is_whitespace() {
                     continue;
                 }
@@ -82,8 +82,8 @@ fn parse_body(first: Option<char>, chars: &mut Peekable<Chars>) -> SnbtResult<Te
     };
 
     match char {
-        '"' => return parse_string('"', chars).map(|text| TextComponent::plain(text)),
-        '\'' => return parse_string('\'', chars).map(|text| TextComponent::plain(text)),
+        '"' => return parse_string('"', chars).map(TextComponent::plain),
+        '\'' => return parse_string('\'', chars).map(TextComponent::plain),
         '[' => {
             let mut components = parse_vec(chars)?.into_iter();
             let first = components.next().ok_or(SnbtError::Required(
@@ -197,7 +197,7 @@ fn parse_compound(chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
                 in_name = false;
                 let mut unknown = 0u8;
                 let mut first = ' ';
-                while let Some(char) = chars.next() {
+                for char in chars.by_ref() {
                     if char.is_whitespace() {
                         continue;
                     }
@@ -323,7 +323,7 @@ fn match_content(
                 if let Some(Content::Resolvable(Resolvable::Entity { separator, .. })) =
                     &mut compound.contents[3]
                 {
-                    *separator = Box::new(parse_body(Some(first), chars)?);
+                    **separator = parse_body(Some(first), chars)?;
                 } else {
                     compound.contents[3] = Some(Content::Resolvable(Resolvable::Entity {
                         selector: Cow::Borrowed("-None-"),
@@ -333,7 +333,7 @@ fn match_content(
                 if let Some(Content::Resolvable(Resolvable::NBT { separator, .. })) =
                     &mut compound.contents[5]
                 {
-                    *separator = Box::new(parse_body(Some(first), chars)?);
+                    **separator = parse_body(Some(first), chars)?;
                 } else {
                     compound.contents[5] = Some(Content::Resolvable(Resolvable::NBT {
                         path: Cow::Borrowed("-None-"),
@@ -849,7 +849,7 @@ fn match_content_type(
 ) -> SnbtResult<Content> {
     match &mut content {
         Content::Translate(msg) => {
-            if msg.key != "" {
+            if !msg.key.is_empty() {
                 return Ok(content);
             }
             Err(SnbtError::Required(
@@ -896,11 +896,8 @@ fn match_content_type(
                     *source = storage.clone();
                 }
                 _ => {
-                    for nbt in nbt_sources {
-                        if let Some(nbt) = nbt {
-                            *source = nbt.clone();
-                            break;
-                        }
+                    if let Some(nbt) = nbt_sources.iter().flatten().next() {
+                        *source = nbt.clone();
                     }
                 }
             }
@@ -930,7 +927,7 @@ fn match_content_type(
                 String::from("player"),
             ))
         }
-        _ => return Ok(content),
+        _ => Ok(content),
     }
 }
 
@@ -1005,7 +1002,7 @@ fn match_format(
             if first == '[' {
                 let mut nums = vec![];
                 let mut num = String::new();
-                while let Some(char) = chars.next() {
+                for char in chars.by_ref() {
                     if char == ']' {
                         nums.push(num.clone());
                         break;
@@ -1099,7 +1096,7 @@ fn parse_click(chars: &mut Peekable<Chars>) -> SnbtResult<ClickEvent> {
             '}' => {
                 return match action.as_str() {
                     "open_url" => {
-                        if let Some(Some(event)) = events.into_iter().nth(0) {
+                        if let Some(Some(event)) = events.into_iter().next() {
                             return Ok(event);
                         }
                         Err(SnbtError::Required(
@@ -1253,7 +1250,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
             '}' => {
                 return match action.as_str() {
                     "show_text" => {
-                        if let Some(Some(event)) = events.into_iter().nth(0) {
+                        if let Some(Some(event)) = events.into_iter().next() {
                             return Ok(event);
                         }
                         Err(SnbtError::Required(
@@ -1329,7 +1326,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                     Some(HoverEvent::ShowItem { id, .. }) => {
                                         *id = new_id.clone();
                                     }
-                                    None | _ => {
+                                    _ => {
                                         events[1] = Some(HoverEvent::ShowItem {
                                             id: new_id.clone(),
                                             count: None,
@@ -1341,7 +1338,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                     Some(HoverEvent::ShowEntity { id, .. }) => {
                                         *id = new_id;
                                     }
-                                    None | _ => {
+                                    _ => {
                                         events[2] = Some(HoverEvent::ShowEntity {
                                             name: None,
                                             id: new_id,
@@ -1356,7 +1353,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                             Some(HoverEvent::ShowItem { count, .. }) => {
                                 *count = Some(parse_num(next, chars, "id")?.as_i32());
                             }
-                            None | _ => {
+                            _ => {
                                 events[1] = Some(HoverEvent::ShowItem {
                                     id: Cow::Borrowed("-None-"),
                                     count: Some(parse_num(next, chars, "id")?.as_i32()),
@@ -1369,7 +1366,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                 Some(HoverEvent::ShowItem { components, .. }) => {
                                     *components = Some(Cow::Owned(parse_string(next, chars)?));
                                 }
-                                None | _ => {
+                                _ => {
                                     events[1] = Some(HoverEvent::ShowItem {
                                         id: Cow::Borrowed("-None-"),
                                         count: None,
@@ -1388,7 +1385,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                             Some(HoverEvent::ShowEntity { name, .. }) => {
                                 *name = Some(Box::new(parse_body(Some(next), chars)?));
                             }
-                            None | _ => {
+                            _ => {
                                 events[2] = Some(HoverEvent::ShowEntity {
                                     name: Some(Box::new(parse_body(Some(next), chars)?)),
                                     id: Cow::Borrowed("-None-"),
@@ -1428,7 +1425,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                                 Some(HoverEvent::ShowEntity { uuid, .. }) => {
                                     *uuid = new_uuid;
                                 }
-                                None | _ => {
+                                _ => {
                                     events[2] = Some(HoverEvent::ShowEntity {
                                         name: None,
                                         id: Cow::Borrowed("-None-"),
@@ -1508,24 +1505,24 @@ enum Num {
     F64(f64),
 }
 impl Num {
-    pub fn as_i32(self) -> i32 {
+    pub fn as_i32(&self) -> i32 {
         match self {
-            Num::I8(n) => n as i32,
-            Num::I16(n) => n as i32,
-            Num::I32(n) => n,
-            Num::I64(n) => n as i32,
-            Num::F32(n) => n as i32,
-            Num::F64(n) => n as i32,
+            Num::I8(n) => *n as i32,
+            Num::I16(n) => *n as i32,
+            Num::I32(n) => *n,
+            Num::I64(n) => *n as i32,
+            Num::F32(n) => *n as i32,
+            Num::F64(n) => *n as i32,
         }
     }
-    pub fn as_i64(self) -> i64 {
+    pub fn as_i64(&self) -> i64 {
         match self {
-            Num::I8(n) => n as i64,
-            Num::I16(n) => n as i64,
-            Num::I32(n) => n as i64,
-            Num::I64(n) => n,
-            Num::F32(n) => n as i64,
-            Num::F64(n) => n as i64,
+            Num::I8(n) => *n as i64,
+            Num::I16(n) => *n as i64,
+            Num::I32(n) => *n as i64,
+            Num::I64(n) => *n,
+            Num::F32(n) => *n as i64,
+            Num::F64(n) => *n as i64,
         }
     }
 }

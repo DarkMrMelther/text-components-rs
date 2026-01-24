@@ -139,34 +139,34 @@ impl Format {
                 other.font.clone()
             },
             bold: if self.bold.is_some() {
-                self.bold.clone()
+                self.bold
             } else {
-                other.bold.clone()
+                other.bold
             },
             italic: if self.italic.is_some() {
-                self.italic.clone()
+                self.italic
             } else {
-                other.italic.clone()
+                other.italic
             },
             underlined: if self.underlined.is_some() {
-                self.underlined.clone()
+                self.underlined
             } else {
-                other.underlined.clone()
+                other.underlined
             },
             strikethrough: if self.strikethrough.is_some() {
-                self.strikethrough.clone()
+                self.strikethrough
             } else {
-                other.strikethrough.clone()
+                other.strikethrough
             },
             obfuscated: if self.obfuscated.is_some() {
-                self.obfuscated.clone()
+                self.obfuscated
             } else {
-                other.obfuscated.clone()
+                other.obfuscated
             },
             shadow_color: if self.shadow_color.is_some() {
-                self.shadow_color.clone()
+                self.shadow_color
             } else {
-                other.shadow_color.clone()
+                other.shadow_color
             },
         }
     }
@@ -198,7 +198,7 @@ impl Color {
     pub fn from_hex(color: &str) -> Option<Color> {
         if color.starts_with('#')
             && color.chars().count() == 7
-            && color[1..].find(|a: char| !a.is_ascii_hexdigit()) == None
+            && color[1..].find(|a: char| !a.is_ascii_hexdigit()).is_none()
         {
             let color = color.strip_prefix('#').unwrap();
             let (r, color) = color.split_at(2);

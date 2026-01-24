@@ -210,7 +210,7 @@ impl NbtSource {
     pub fn entity<T: Into<Cow<'static, str>>>(selector: T) -> Self {
         NbtSource::Entity(selector.into())
     }
-    /// Creates a [NbtSource] from a block cordinates.
+    /// Creates a [NbtSource] from a block coordinates.
     pub fn block(x: i32, y: i32, z: i32) -> Self {
         NbtSource::Block(Cow::Owned(format!("{x} {y} {z}")))
     }
