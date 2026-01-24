@@ -139,7 +139,7 @@ fn main() {
             TranslatedMessage::new("translated", None).reset(),
             "This text contains a link!"
                 .click_event(ClickEvent::open_url(
-                    "https://github.com/DarkMrMelther/text-components-rs",
+                    "https://github.com/Steel-Foundation/TextComponents",
                 ))
                 .reset(),
         ])

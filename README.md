@@ -26,7 +26,7 @@ let component = component.hover_event(
 );
 
 let component = component.click_event(
-    ClickEvent::open_url("https://github.com/DarkMrMelther/text-components-rs")
+    ClickEvent::open_url("https://github.com/Steel-Foundation/TextComponents")
 );
 ```
 

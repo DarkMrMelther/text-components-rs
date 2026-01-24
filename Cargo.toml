@@ -1,7 +1,7 @@
 [package]
 name = "text_components"
 description = "A Rust implementation of Minecraft's Text Components"
-repository = "https://github.com/DarkMrMelther/text-components-rs"
+repository = "https://github.com/Steel-Foundation/TextComponents"
 license = "GPL-3.0-or-later"
 readme = "README.md"
 version = "0.1.6"
