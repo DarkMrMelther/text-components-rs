@@ -28,7 +28,7 @@ pub trait TextResolutor {
             positions.push((pos, counter, 2usize));
             counter += 1;
         }
-        positions.sort_by(|(pos, _, _), (other, _, _)| pos.cmp(other));
+        positions.sort_by_key(|(pos, _, _)| *pos);
         let mut translation = vec![];
         let mut positions = positions.into_iter().peekable();
         while let Some((pos, _, size)) = positions.next() {
