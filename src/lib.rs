@@ -16,6 +16,7 @@ pub mod custom;
 pub mod fmt;
 pub mod format;
 pub mod interactivity;
+pub mod minimessage;
 #[cfg(feature = "nbt")]
 pub mod nbt;
 pub mod parse;
