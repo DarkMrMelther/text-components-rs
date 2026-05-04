@@ -129,9 +129,9 @@ impl Format {
     pub fn mix(&self, other: &Format) -> Format {
         Format {
             color: if self.color.is_some() {
-                self.color.clone()
+                self.color
             } else {
-                other.color.clone()
+                other.color
             },
             font: if self.font.is_some() {
                 self.font.clone()
@@ -172,7 +172,7 @@ impl Format {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Color {
