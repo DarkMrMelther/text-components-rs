@@ -1,10 +1,11 @@
-use crate::TextComponent;
+use crate::RawTextComponent;
 use std::borrow::Cow;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct CustomData {
-    pub id: Cow<'static, str>,
+pub struct CustomData<'a> {
+    pub id: Cow<'a, str>,
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Payload::is_empty", default)
@@ -13,6 +14,7 @@ pub struct CustomData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub enum Payload {
     #[default]
@@ -25,29 +27,32 @@ impl Payload {
     }
 }
 
-pub trait CustomRegistry {
+pub trait CustomRegistry<'a> {
     type Data;
-    fn register_content<T: CustomContent>(&mut self, id: &'static str, content: T);
-    fn get_content(&self, id: String) -> Box<dyn CustomContent<Reg = Self>>;
+    fn register_content<T: CustomContent<'a>>(&mut self, id: &'a str, content: T);
+    fn get_content(&self, id: String) -> Box<dyn CustomContent<'_, Reg = Self>>;
 }
 
-pub trait CustomContent {
-    type Reg: CustomRegistry;
-    fn as_data(&self) -> CustomData;
-    fn resolve(&self, data: <Self::Reg as CustomRegistry>::Data, payload: Payload)
-    -> TextComponent;
+pub trait CustomContent<'a> {
+    type Reg: CustomRegistry<'a>;
+    fn as_data(&self) -> CustomData<'a>;
+    fn resolve(
+        &self,
+        data: <Self::Reg as CustomRegistry<'a>>::Data,
+        payload: Payload,
+    ) -> RawTextComponent<'a>;
 }
 
-impl From<CustomData> for TextComponent {
-    fn from(value: CustomData) -> Self {
-        TextComponent {
+impl<'a> From<CustomData<'a>> for RawTextComponent<'a> {
+    fn from(value: CustomData<'a>) -> Self {
+        RawTextComponent {
             content: crate::content::Content::Custom(value),
             ..Default::default()
         }
     }
 }
-impl<T: CustomContent> From<T> for TextComponent {
+impl<'a, T: CustomContent<'a> + 'a> From<T> for RawTextComponent<'a> {
     fn from(value: T) -> Self {
-        TextComponent::custom(value)
+        RawTextComponent::custom(value)
     }
 }

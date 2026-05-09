@@ -1,7 +1,7 @@
 #[cfg(feature = "custom")]
 use crate::custom::Payload;
 use crate::{
-    Modifier, TextComponent,
+    Modifier, RawTextComponent,
     content::{Content, Object},
     format::{Color, Format},
     interactivity::{ClickEvent, HoverEvent, Interactivity},
@@ -15,12 +15,12 @@ use std::ops::Deref as _;
 
 pub struct NbtBuilder;
 
-impl BuildTarget for NbtBuilder {
+impl<'a> BuildTarget<'a> for NbtBuilder {
     type Result = NbtTag;
-    fn build_component<R: TextResolutor + ?Sized>(
+    fn build_component<R: TextResolutor<'a> + ?Sized>(
         &self,
         resolutor: &R,
-        component: &TextComponent,
+        component: &RawTextComponent<'a>,
     ) -> NbtTag {
         let mut items = vec![];
         component.content.to_compound(&mut items, self, resolutor);
@@ -46,8 +46,8 @@ impl BuildTarget for NbtBuilder {
     }
 }
 
-impl TextComponent {
-    pub fn nbt_display<T: Into<NbtTag>>(tag: T) -> Self {
+impl<'a> RawTextComponent<'a> {
+    pub fn nbt_display(tag: impl Into<NbtTag>) -> Self {
         let tag = tag.into();
         match tag {
             NbtTag::Byte(n) => n
@@ -84,7 +84,7 @@ impl TextComponent {
                         children.push(", ".into());
                     }
                 }
-                children.push(TextComponent::plain("]"));
+                children.push(RawTextComponent::plain("]"));
                 component.add_children(children)
             }
             NbtTag::String(string) => {
@@ -94,12 +94,12 @@ impl TextComponent {
                 let component = "[".color(Color::White);
                 let mut children = vec![];
                 for (i, tag) in nbt_list.as_nbt_tags().into_iter().enumerate() {
-                    children.push(TextComponent::nbt_display(tag));
+                    children.push(RawTextComponent::nbt_display(tag));
                     if i + 1 != nbt_list.as_nbt_tags().len() {
                         children.push(", ".into());
                     }
                 }
-                children.push(TextComponent::plain("]"));
+                children.push(RawTextComponent::plain("]"));
                 component.add_children(children)
             }
             NbtTag::Compound(compound) => {
@@ -111,14 +111,14 @@ impl TextComponent {
                         children.push(name.to_string().color(Color::Aqua));
                         children.push(": ".into());
                     } else if len == 1 {
-                        return TextComponent::nbt_display(tag);
+                        return RawTextComponent::nbt_display(tag);
                     }
-                    children.push(TextComponent::nbt_display(tag));
+                    children.push(RawTextComponent::nbt_display(tag));
                     if i + 1 != len {
                         children.push(", ".into());
                     }
                 }
-                children.push(TextComponent::plain("}"));
+                children.push(RawTextComponent::plain("}"));
                 component.add_children(children)
             }
             NbtTag::IntArray(items) => {
@@ -132,7 +132,7 @@ impl TextComponent {
                         children.push(", ".into());
                     }
                 }
-                children.push(TextComponent::plain("]"));
+                children.push(RawTextComponent::plain("]"));
                 component.add_children(children)
             }
             NbtTag::LongArray(items) => {
@@ -150,7 +150,7 @@ impl TextComponent {
                         children.push(", ".into());
                     }
                 }
-                children.push(TextComponent::plain("]"));
+                children.push(RawTextComponent::plain("]"));
                 component.add_children(children)
             }
         }
@@ -264,8 +264,8 @@ impl ToSNBT for NbtTag {
     }
 }
 
-impl Content {
-    fn to_compound<R: TextResolutor + ?Sized>(
+impl<'a> Content<'a> {
+    fn to_compound<R: TextResolutor<'a> + ?Sized>(
         &self,
         compound: &mut Vec<(Mutf8String, NbtTag)>,
         target: &NbtBuilder,
@@ -347,7 +347,7 @@ impl Content {
     }
 }
 
-impl Format {
+impl<'a> Format<'a> {
     fn to_compound(&self, compound: &mut Vec<(Mutf8String, NbtTag)>) {
         if let Some(color) = &self.color {
             compound.push((
@@ -399,8 +399,8 @@ impl Format {
     }
 }
 
-impl Interactivity {
-    fn to_compound<R: TextResolutor + ?Sized>(
+impl<'a> Interactivity<'a> {
+    fn to_compound<R: TextResolutor<'a> + ?Sized>(
         &self,
         resolutor: &R,
         compound: &mut Vec<(Mutf8String, NbtTag)>,
@@ -420,8 +420,8 @@ impl Interactivity {
     }
 }
 
-impl HoverEvent {
-    fn to_nbt_tag<R: TextResolutor + ?Sized>(&self, resolutor: &R) -> NbtTag {
+impl<'a> HoverEvent<'a> {
+    fn to_nbt_tag<R: TextResolutor<'a> + ?Sized>(&self, resolutor: &R) -> NbtTag {
         match self {
             HoverEvent::ShowText { value } => NbtTag::Compound(NbtCompound::from_values(vec![
                 ("action".into(), NbtTag::String("show_text".into())),
@@ -466,7 +466,7 @@ impl HoverEvent {
     }
 }
 
-impl ClickEvent {
+impl<'a> ClickEvent<'a> {
     fn to_nbt_tag(&self) -> NbtTag {
         let mut values = vec![];
         match &self {
@@ -507,19 +507,19 @@ impl ClickEvent {
     }
 }
 
-impl ToNbtTag for TextComponent {
+impl<'a> ToNbtTag for RawTextComponent<'a> {
     fn to_nbt_tag(self) -> NbtTag {
         NbtBuilder.build_component(&NoResolutor, &self)
     }
 }
-impl ToNbtTag for &TextComponent {
+impl<'a> ToNbtTag for &RawTextComponent<'a> {
     fn to_nbt_tag(self) -> NbtTag {
         NbtBuilder.build_component(&NoResolutor, self)
     }
 }
-impl FromNbtTag for TextComponent {
+impl<'a> FromNbtTag for RawTextComponent<'a> {
     fn from_nbt_tag(tag: simdnbt::borrow::NbtTag) -> Option<Self> {
-        TextComponent::from_nbt(&tag.to_owned())
+        RawTextComponent::from_nbt(&tag.to_owned())
     }
 }
 

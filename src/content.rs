@@ -1,30 +1,31 @@
 #[cfg(feature = "custom")]
 use crate::custom::CustomData;
 use crate::{
-    TextComponent, format::Format, interactivity::Interactivity, translation::TranslatedMessage,
+    RawTextComponent, format::Format, interactivity::Interactivity, translation::TranslatedMessage,
 };
 use std::borrow::Cow;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case", untagged))]
-pub enum Content {
+pub enum Content<'a> {
     Text {
-        text: Cow<'static, str>,
+        text: Cow<'a, str>,
     },
-    Translate(TranslatedMessage),
+    Translate(TranslatedMessage<'a>),
     Keybind {
-        keybind: Cow<'static, str>,
+        keybind: Cow<'a, str>,
     },
     /// #### Needs [resolution](TextComponent::resolve)
     #[cfg(feature = "custom")]
-    Custom(CustomData),
-    Object(Object),
+    Custom(CustomData<'a>),
+    Object(Object<'a>),
     /// #### Needs [resolution](TextComponent::resolve)
-    Resolvable(Resolvable),
+    Resolvable(Resolvable<'a>),
 }
 
-impl From<String> for Content {
+impl<'a> From<String> for Content<'a> {
     fn from(value: String) -> Self {
         Content::Text {
             text: Cow::Owned(value),
@@ -33,18 +34,19 @@ impl From<String> for Content {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub enum Object {
+pub enum Object<'a> {
     Atlas {
         #[cfg_attr(
             feature = "serde",
             serde(skip_serializing_if = "Option::is_none", default)
         )]
-        atlas: Option<Cow<'static, str>>,
-        sprite: Cow<'static, str>,
+        atlas: Option<Cow<'a, str>>,
+        sprite: Cow<'a, str>,
     },
     Player {
-        player: ObjectPlayer,
+        player: ObjectPlayer<'a>,
         #[cfg_attr(
             feature = "serde",
             serde(skip_serializing_if = "Clone::clone", default)
@@ -53,13 +55,14 @@ pub enum Object {
     },
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ObjectPlayer {
+pub struct ObjectPlayer<'a> {
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
     )]
-    pub name: Option<Cow<'static, str>>,
+    pub name: Option<Cow<'a, str>>,
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
@@ -69,16 +72,16 @@ pub struct ObjectPlayer {
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
     )]
-    pub texture: Option<Cow<'static, str>>,
+    pub texture: Option<Cow<'a, str>>,
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Vec::is_empty", default)
     )]
-    pub properties: Vec<PlayerProperties>,
+    pub properties: Vec<PlayerProperties<'a>>,
 }
-impl ObjectPlayer {
+impl<'a> ObjectPlayer<'a> {
     /// Creates a [ObjectPlayer] from a player's name.
-    pub fn name<T: Into<Cow<'static, str>>>(name: T) -> Self {
+    pub fn name(name: impl Into<Cow<'a, str>>) -> Self {
         ObjectPlayer {
             name: Some(name.into()),
             id: None,
@@ -96,7 +99,7 @@ impl ObjectPlayer {
         }
     }
     /// Creates a [ObjectPlayer] from the path to a texture of a resource pack.
-    pub fn texture<T: Into<Cow<'static, str>>>(path: T) -> Self {
+    pub fn texture(path: impl Into<Cow<'a, str>>) -> Self {
         ObjectPlayer {
             name: None,
             id: None,
@@ -107,9 +110,9 @@ impl ObjectPlayer {
     /// Creates a [ObjectPlayer] from a player's skin properties.
     /// * `value` - A [texture data json](https://minecraft.wiki/w/Mojang_API#Query_player's_skin_and_cape) encoded in Base64
     /// * `signature` - An optional Mojang's signature, also encoded in Base64
-    pub fn property<T: Into<Cow<'static, str>>, R: Into<Cow<'static, str>>>(
-        value: T,
-        signature: Option<R>,
+    pub fn property(
+        value: impl Into<Cow<'a, str>>,
+        signature: Option<impl Into<Cow<'a, str>>>,
     ) -> Self {
         ObjectPlayer {
             name: None,
@@ -131,36 +134,38 @@ impl ObjectPlayer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct PlayerProperties {
-    pub name: Cow<'static, str>,
-    pub value: Cow<'static, str>,
-    pub signature: Option<Cow<'static, str>>,
+pub struct PlayerProperties<'a> {
+    pub name: Cow<'a, str>,
+    pub value: Cow<'a, str>,
+    pub signature: Option<Cow<'a, str>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub enum Resolvable {
+pub enum Resolvable<'a> {
     /// The selector must only accept 1 target
     /// #### Needs [resolution](TextComponent::resolve)
     #[cfg_attr(feature = "serde", serde(rename = "score"))]
     Scoreboard {
         #[cfg_attr(feature = "serde", serde(rename = "name"))]
-        selector: Cow<'static, str>,
-        objective: Cow<'static, str>,
+        selector: Cow<'a, str>,
+        objective: Cow<'a, str>,
     },
     /// #### Needs [resolution](TextComponent::resolve)
     #[cfg_attr(feature = "serde", serde(untagged))]
     Entity {
-        selector: Cow<'static, str>,
+        selector: Cow<'a, str>,
         #[cfg_attr(feature = "serde", serde(default = "Resolvable::entity_separator"))]
-        separator: Box<TextComponent>,
+        separator: Box<RawTextComponent<'a>>,
     },
     /// #### Needs [resolution](TextComponent::resolve)
     #[cfg_attr(feature = "serde", serde(untagged))]
     NBT {
         #[cfg_attr(feature = "serde", serde(rename = "nbt"))]
-        path: Cow<'static, str>,
+        path: Cow<'a, str>,
         // This meants to represent that this component should be
         // replaced with the one inside the nbt selected if possible
         #[cfg_attr(
@@ -169,14 +174,14 @@ pub enum Resolvable {
         )]
         interpret: Option<bool>,
         #[cfg_attr(feature = "serde", serde(default = "Resolvable::nbt_separator"))]
-        separator: Box<TextComponent>,
+        separator: Box<RawTextComponent<'a>>,
         #[cfg_attr(feature = "serde", serde(flatten, default = "NbtSource::Entity"))]
-        source: NbtSource,
+        source: NbtSource<'a>,
     },
 }
-impl Resolvable {
-    pub fn entity_separator() -> Box<TextComponent> {
-        Box::new(TextComponent {
+impl<'a> Resolvable<'a> {
+    pub fn entity_separator() -> Box<RawTextComponent<'a>> {
+        Box::new(RawTextComponent {
             content: Content::Text {
                 text: Cow::Borrowed(", "),
             },
@@ -187,8 +192,8 @@ impl Resolvable {
             ..Default::default()
         })
     }
-    pub fn nbt_separator() -> Box<TextComponent> {
-        Box::new(TextComponent {
+    pub fn nbt_separator() -> Box<RawTextComponent<'a>> {
+        Box::new(RawTextComponent {
             content: Content::Text {
                 text: Cow::Borrowed(", "),
             },
@@ -198,16 +203,17 @@ impl Resolvable {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
-pub enum NbtSource {
-    Entity(Cow<'static, str>),
-    Block(Cow<'static, str>),
-    Storage(Cow<'static, str>),
+pub enum NbtSource<'a> {
+    Entity(Cow<'a, str>),
+    Block(Cow<'a, str>),
+    Storage(Cow<'a, str>),
 }
-impl NbtSource {
+impl<'a> NbtSource<'a> {
     /// Creates a [NbtSource] from a entity selector.
-    pub fn entity<T: Into<Cow<'static, str>>>(selector: T) -> Self {
+    pub fn entity(selector: impl Into<Cow<'a, str>>) -> Self {
         NbtSource::Entity(selector.into())
     }
     /// Creates a [NbtSource] from a block coordinates.
@@ -215,14 +221,14 @@ impl NbtSource {
         NbtSource::Block(Cow::Owned(format!("{x} {y} {z}")))
     }
     /// Creates a [NbtSource] from a Nbt Storage identifier.
-    pub fn storage<T: Into<Cow<'static, str>>>(identifier: T) -> Self {
+    pub fn storage(identifier: impl Into<Cow<'a, str>>) -> Self {
         NbtSource::Storage(identifier.into())
     }
 }
 
-impl From<Content> for TextComponent {
-    fn from(value: Content) -> Self {
-        TextComponent {
+impl<'a> From<Content<'a>> for RawTextComponent<'a> {
+    fn from(value: Content<'a>) -> Self {
+        RawTextComponent {
             content: value,
             children: Vec::new(),
             format: Format::new(),
@@ -230,9 +236,9 @@ impl From<Content> for TextComponent {
         }
     }
 }
-impl From<Object> for TextComponent {
-    fn from(value: Object) -> Self {
-        TextComponent {
+impl<'a> From<Object<'a>> for RawTextComponent<'a> {
+    fn from(value: Object<'a>) -> Self {
+        RawTextComponent {
             content: Content::Object(value),
             children: Vec::new(),
             format: Format::new(),
@@ -240,9 +246,9 @@ impl From<Object> for TextComponent {
         }
     }
 }
-impl From<ObjectPlayer> for TextComponent {
-    fn from(value: ObjectPlayer) -> Self {
-        TextComponent {
+impl<'a> From<ObjectPlayer<'a>> for RawTextComponent<'a> {
+    fn from(value: ObjectPlayer<'a>) -> Self {
+        RawTextComponent {
             content: Content::Object(Object::Player {
                 player: value,
                 hat: true,
@@ -253,9 +259,9 @@ impl From<ObjectPlayer> for TextComponent {
         }
     }
 }
-impl From<Resolvable> for TextComponent {
-    fn from(value: Resolvable) -> Self {
-        TextComponent {
+impl<'a> From<Resolvable<'a>> for RawTextComponent<'a> {
+    fn from(value: Resolvable<'a>) -> Self {
+        RawTextComponent {
             content: Content::Resolvable(value),
             children: Vec::new(),
             format: Format::new(),

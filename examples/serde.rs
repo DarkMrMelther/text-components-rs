@@ -1,11 +1,11 @@
-use text_components::{Modifier, TextComponent, format::Color, translation::TranslatedMessage};
+use text_components::{Modifier, RawTextComponent, format::Color, translation::TranslatedMessage};
 
 fn main() {
-    let component: TextComponent = TranslatedMessage::new("key", None)
+    let component: RawTextComponent = TranslatedMessage::new("key", None)
         .color(Color::Blue)
         .bold(true);
     println!("{}", serde_json::to_string_pretty(&component).unwrap());
-    let component: TextComponent = serde_json::from_str(
+    let component: RawTextComponent = serde_json::from_str(
         "{
             \"text\": \"This is a Serde test\",
             \"color\": \"blue\",

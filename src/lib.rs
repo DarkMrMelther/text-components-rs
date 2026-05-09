@@ -16,6 +16,11 @@ pub mod custom;
 pub mod fmt;
 pub mod format;
 pub mod interactivity;
+#[cfg(feature = "minimessage")]
+pub mod minimessage;
+#[cfg(feature = "minimessage")]
+#[cfg(test)]
+mod minimessage_tests;
 #[cfg(feature = "nbt")]
 pub mod nbt;
 pub mod parse;
@@ -84,26 +89,29 @@ pub mod translation;
 /// component.to_pretty(resolutor);
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct TextComponent {
+pub struct RawTextComponent<'a> {
     #[cfg_attr(feature = "serde", serde(flatten))]
-    pub content: Content,
+    pub content: Content<'a>,
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Vec::is_empty", rename = "extra", default)
     )]
-    pub children: Vec<TextComponent>,
+    pub children: Vec<RawTextComponent<'a>>,
     #[cfg_attr(feature = "serde", serde(flatten))]
-    pub format: Format,
+    pub format: Format<'a>,
     #[cfg_attr(feature = "serde", serde(flatten))]
-    pub interactions: Interactivity,
+    pub interactions: Interactivity<'a>,
 }
 
+pub type TextComponent = RawTextComponent<'static>;
+
 // Constructors
-impl TextComponent {
+impl<'a> RawTextComponent<'a> {
     /// Creates an empty [TextComponent], useful to make it the parent.
     pub const fn new() -> Self {
-        TextComponent {
+        RawTextComponent {
             content: Content::Text {
                 text: Cow::Borrowed(""),
             },
@@ -119,8 +127,8 @@ impl TextComponent {
     /// // Results in "Test Component"
     /// TextComponent::const_plain("Test Component");
     /// ```
-    pub const fn const_plain(text: &'static str) -> Self {
-        TextComponent {
+    pub const fn const_plain(text: &'a str) -> Self {
+        RawTextComponent {
             content: Content::Text {
                 text: Cow::Borrowed(text),
             },
@@ -140,8 +148,8 @@ impl TextComponent {
     /// ```
     /// let component: TextComponent = "Test Component".into();
     /// ```
-    pub fn plain<T: Into<Cow<'static, str>>>(text: T) -> Self {
-        TextComponent {
+    pub fn plain(text: impl Into<Cow<'a, str>>) -> Self {
+        RawTextComponent {
             content: Content::Text { text: text.into() },
             children: vec![],
             format: Format::new(),
@@ -170,8 +178,8 @@ impl TextComponent {
     /// // Results in "The Rust compiler was killed by you using magic".
     /// TextComponent::translated(DEATH_ATTACK_INDIRECT_MAGIC.message(["The Rust compiler", "you"]));
     /// ```
-    pub const fn translated(message: TranslatedMessage) -> Self {
-        TextComponent {
+    pub const fn translated(message: TranslatedMessage<'a>) -> Self {
+        RawTextComponent {
             content: Content::Translate(message),
             children: vec![],
             format: Format::new(),
@@ -187,11 +195,8 @@ impl TextComponent {
     /// // Displays the Diamond Sword sprite
     /// TextComponent::atlas("item/diamond_sword", Some("minecraft:items"));
     /// ```
-    pub fn atlas<T: Into<Cow<'static, str>>, R: Into<Cow<'static, str>>>(
-        sprite: T,
-        atlas: Option<R>,
-    ) -> Self {
-        TextComponent {
+    pub fn atlas(sprite: impl Into<Cow<'a, str>>, atlas: Option<impl Into<Cow<'a, str>>>) -> Self {
+        RawTextComponent {
             content: Content::Object(Object::Atlas {
                 atlas: atlas.map(Into::into),
                 sprite: sprite.into(),
@@ -209,8 +214,8 @@ impl TextComponent {
     /// // Displays the head of Jeb_
     /// TextComponent::player_head(ObjectPlayer::name("Jeb_"), true);
     /// ```
-    pub const fn player_head(player: ObjectPlayer, hat: bool) -> Self {
-        TextComponent {
+    pub const fn player_head(player: ObjectPlayer<'a>, hat: bool) -> Self {
+        RawTextComponent {
             content: Content::Object(Object::Player { player, hat }),
             children: Vec::new(),
             format: Format::new(),
@@ -228,11 +233,11 @@ impl TextComponent {
     /// TextComponent::scoreboard("@p", "deaths");
     /// ```
     /// #### Needs [resolution](TextComponent::resolve)
-    pub fn scoreboard<T: Into<Cow<'static, str>>, R: Into<Cow<'static, str>>>(
-        selector: T,
-        objective: R,
+    pub fn scoreboard(
+        selector: impl Into<Cow<'a, str>>,
+        objective: impl Into<Cow<'a, str>>,
     ) -> Self {
-        TextComponent {
+        RawTextComponent {
             content: Content::Resolvable(Resolvable::Scoreboard {
                 selector: selector.into(),
                 objective: objective.into(),
@@ -252,8 +257,8 @@ impl TextComponent {
     /// TextComponent::entity("@a", Some(" ".into()));
     /// ```
     /// #### Needs [resolution](TextComponent::resolve)
-    pub fn entity<T: Into<Cow<'static, str>>>(selector: T, separator: Option<Self>) -> Self {
-        TextComponent {
+    pub fn entity(selector: impl Into<Cow<'a, str>>, separator: Option<Self>) -> Self {
+        RawTextComponent {
             content: Content::Resolvable(Resolvable::Entity {
                 selector: selector.into(),
                 separator: match separator {
@@ -278,13 +283,13 @@ impl TextComponent {
     /// TextComponent::nbt("Health", NbtSource::entity("@p"), false, None);
     /// ```
     /// #### Needs [resolution](TextComponent::resolve)
-    pub fn nbt<T: Into<Cow<'static, str>>>(
-        path: T,
-        source: NbtSource,
+    pub fn nbt(
+        path: impl Into<Cow<'a, str>>,
+        source: NbtSource<'a>,
         interpret: bool,
         separator: Option<Self>,
     ) -> Self {
-        TextComponent {
+        RawTextComponent {
             content: Content::Resolvable(Resolvable::NBT {
                 path: path.into(),
                 interpret: if interpret { Some(true) } else { None },
@@ -301,53 +306,59 @@ impl TextComponent {
     }
 
     #[cfg(feature = "custom")]
-    pub fn custom<T: CustomContent>(content: T) -> TextComponent {
-        TextComponent {
+    pub fn custom(content: impl CustomContent<'a> + 'a) -> RawTextComponent<'a> {
+        RawTextComponent {
             content: Content::Custom(content.as_data()),
             children: vec![],
             format: Format::new(),
             interactions: Interactivity::new(),
         }
     }
+
+    #[cfg(feature = "minimessage")]
+    pub fn minimessage(text: impl Into<&'a str>) -> RawTextComponent<'a> {
+        use crate::minimessage::Parser;
+        Parser::parse(text.into())
+    }
 }
 
-impl Default for TextComponent {
+impl<'a> Default for RawTextComponent<'a> {
     fn default() -> Self {
-        TextComponent::new()
+        RawTextComponent::new()
     }
 }
 
-impl From<&'static str> for TextComponent {
-    fn from(value: &'static str) -> Self {
-        TextComponent::const_plain(value)
+impl<'a> From<&'a str> for RawTextComponent<'a> {
+    fn from(value: &'a str) -> Self {
+        RawTextComponent::const_plain(value)
     }
 }
-impl From<String> for TextComponent {
+impl<'a> From<String> for RawTextComponent<'a> {
     fn from(value: String) -> Self {
-        TextComponent::plain(value)
+        RawTextComponent::plain(value)
     }
 }
 
-pub trait Modifier {
+pub trait Modifier<'a> {
     type Output;
     /// Adds a child at the end of a text component
-    fn add_child<T: Into<TextComponent>>(self, child: T) -> Self::Output;
+    fn add_child<T: Into<RawTextComponent<'a>>>(self, child: T) -> Self::Output;
     /// Appends a [vec] of [Into]<[TextComponent]> as children of this component
-    fn add_children<T: Into<TextComponent>>(self, children: Vec<T>) -> Self::Output;
+    fn add_children<T: Into<RawTextComponent<'a>>>(self, children: Vec<T>) -> Self::Output;
     /// Sets the Shift+Click chat insertion string
-    fn insertion<T: Into<Cow<'static, str>>>(self, insertion: T) -> Self::Output;
+    fn insertion<T: Into<Cow<'a, str>>>(self, insertion: T) -> Self::Output;
     /// Sets the [ClickEvent] for this component
-    fn click_event(self, click: ClickEvent) -> Self::Output;
+    fn click_event(self, click: ClickEvent<'a>) -> Self::Output;
     /// Sets the [HoverEvent] for this component
-    fn hover_event(self, hover: HoverEvent) -> Self::Output;
+    fn hover_event(self, hover: HoverEvent<'a>) -> Self::Output;
     /// Sets the [Color] of this component
     /// * If you want to use a hex code check [color_hex](TextComponent::color_hex)
     fn color(self, color: Color) -> Self::Output;
     /// Sets the color of this component from a 6 digit hex color
     /// * If you want to use a predefined color check [color](TextComponent::color)
-    fn color_hex(self, color: &str) -> Self::Output;
+    fn color_hex(self, color: &'a str) -> Self::Output;
     /// Sets the font used to display this component
-    fn font<F: Into<Cow<'static, str>>>(self, font: F) -> Self::Output;
+    fn font<F: Into<Cow<'a, str>>>(self, font: F) -> Self::Output;
     /// Makes this component **bold**
     fn bold(self, value: bool) -> Self::Output;
     /// Makes this component *italic*
@@ -364,14 +375,14 @@ pub trait Modifier {
     fn reset(self) -> Self::Output;
 }
 
-impl<T: Into<TextComponent> + Sized> Modifier for T {
-    type Output = TextComponent;
-    fn add_child<F: Into<TextComponent>>(self, child: F) -> TextComponent {
+impl<'a, T: Into<RawTextComponent<'a>> + Sized> Modifier<'a> for T {
+    type Output = RawTextComponent<'a>;
+    fn add_child<F: Into<RawTextComponent<'a>>>(self, child: F) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.children.push(child.into());
         component
     }
-    fn add_children<F: Into<TextComponent>>(self, children: Vec<F>) -> TextComponent {
+    fn add_children<F: Into<RawTextComponent<'a>>>(self, children: Vec<F>) -> RawTextComponent<'a> {
         let mut component = self.into();
         for child in children {
             component.children.push(child.into());
@@ -379,151 +390,154 @@ impl<T: Into<TextComponent> + Sized> Modifier for T {
         component
     }
 
-    fn insertion<R: Into<Cow<'static, str>>>(self, insertion: R) -> TextComponent {
+    fn insertion<R: Into<Cow<'a, str>>>(self, insertion: R) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.interactions.insertion = Some(insertion.into());
         component
     }
-    fn click_event(self, click: ClickEvent) -> TextComponent {
+    fn click_event(self, click: ClickEvent<'a>) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.interactions.click = Some(click);
         component
     }
-    fn hover_event(self, hover: HoverEvent) -> TextComponent {
+    fn hover_event(self, hover: HoverEvent<'a>) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.interactions.hover = Some(hover);
         component
     }
 
-    fn color(self, color: Color) -> TextComponent {
+    fn color(self, color: Color) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.color(color);
         component
     }
-    fn color_hex(self, color: &str) -> TextComponent {
+    fn color_hex(self, color: &'a str) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.color_hex(color);
         component
     }
-    fn font<F: Into<Cow<'static, str>>>(self, font: F) -> TextComponent {
+    fn font<F: Into<Cow<'a, str>>>(self, font: F) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.font(font);
         component
     }
-    fn bold(self, value: bool) -> TextComponent {
+    fn bold(self, value: bool) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.bold(value);
         component
     }
-    fn italic(self, value: bool) -> TextComponent {
+    fn italic(self, value: bool) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.italic(value);
         component
     }
-    fn underlined(self, value: bool) -> TextComponent {
+    fn underlined(self, value: bool) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.underlined(value);
         component
     }
-    fn strikethrough(self, value: bool) -> TextComponent {
+    fn strikethrough(self, value: bool) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.strikethrough(value);
         component
     }
-    fn obfuscated(self, value: bool) -> TextComponent {
+    fn obfuscated(self, value: bool) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.obfuscated(value);
         component
     }
-    fn shadow_color(self, a: u8, r: u8, g: u8, b: u8) -> TextComponent {
+    fn shadow_color(self, a: u8, r: u8, g: u8, b: u8) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.shadow_color(a, r, g, b);
         component
     }
-    fn reset(self) -> TextComponent {
+    fn reset(self) -> RawTextComponent<'a> {
         let mut component = self.into();
         component.format = component.format.reset();
         component
     }
 }
 
-impl<'a> Modifier for &'a mut TextComponent {
-    type Output = &'a mut TextComponent;
-    fn add_child<T: Into<TextComponent>>(self, child: T) -> &'a mut TextComponent {
+impl<'a> Modifier<'a> for &'a mut RawTextComponent<'a> {
+    type Output = &'a mut RawTextComponent<'a>;
+    fn add_child<T: Into<RawTextComponent<'a>>>(self, child: T) -> &'a mut RawTextComponent<'a> {
         self.children.push(child.into());
         self
     }
 
-    fn add_children<T: Into<TextComponent>>(self, children: Vec<T>) -> &'a mut TextComponent {
+    fn add_children<T: Into<RawTextComponent<'a>>>(
+        self,
+        children: Vec<T>,
+    ) -> &'a mut RawTextComponent<'a> {
         for child in children {
             self.children.push(child.into());
         }
         self
     }
 
-    fn insertion<T: Into<Cow<'static, str>>>(self, insertion: T) -> &'a mut TextComponent {
+    fn insertion<T: Into<Cow<'a, str>>>(self, insertion: T) -> &'a mut RawTextComponent<'a> {
         self.interactions.insertion = Some(insertion.into());
         self
     }
 
-    fn click_event(self, click: ClickEvent) -> &'a mut TextComponent {
+    fn click_event(self, click: ClickEvent<'a>) -> &'a mut RawTextComponent<'a> {
         self.interactions.click = Some(click);
         self
     }
 
-    fn hover_event(self, hover: HoverEvent) -> &'a mut TextComponent {
+    fn hover_event(self, hover: HoverEvent<'a>) -> &'a mut RawTextComponent<'a> {
         self.interactions.hover = Some(hover);
         self
     }
 
-    fn color(self, color: Color) -> &'a mut TextComponent {
+    fn color(self, color: Color) -> &'a mut RawTextComponent<'a> {
         self.format.color = Some(color);
         self
     }
 
-    fn color_hex(self, color: &str) -> &'a mut TextComponent {
+    fn color_hex(self, color: &str) -> &'a mut RawTextComponent<'a> {
         if let Some(color) = Color::from_hex(color) {
             self.format.color = Some(color);
         }
         self
     }
 
-    fn font<F: Into<Cow<'static, str>>>(self, font: F) -> &'a mut TextComponent {
+    fn font<F: Into<Cow<'a, str>>>(self, font: F) -> &'a mut RawTextComponent<'a> {
         self.format.font = Some(font.into());
         self
     }
 
-    fn bold(self, value: bool) -> &'a mut TextComponent {
+    fn bold(self, value: bool) -> &'a mut RawTextComponent<'a> {
         self.format.bold = Some(value);
         self
     }
 
-    fn italic(self, value: bool) -> &'a mut TextComponent {
+    fn italic(self, value: bool) -> &'a mut RawTextComponent<'a> {
         self.format.italic = Some(value);
         self
     }
 
-    fn underlined(self, value: bool) -> &'a mut TextComponent {
+    fn underlined(self, value: bool) -> &'a mut RawTextComponent<'a> {
         self.format.underlined = Some(value);
         self
     }
 
-    fn strikethrough(self, value: bool) -> &'a mut TextComponent {
+    fn strikethrough(self, value: bool) -> &'a mut RawTextComponent<'a> {
         self.format.strikethrough = Some(value);
         self
     }
 
-    fn obfuscated(self, value: bool) -> &'a mut TextComponent {
+    fn obfuscated(self, value: bool) -> &'a mut RawTextComponent<'a> {
         self.format.obfuscated = Some(value);
         self
     }
 
-    fn shadow_color(self, a: u8, r: u8, g: u8, b: u8) -> &'a mut TextComponent {
+    fn shadow_color(self, a: u8, r: u8, g: u8, b: u8) -> &'a mut RawTextComponent<'a> {
         self.format.shadow_color = Some(Format::parse_shadow_color(a, r, g, b));
         self
     }
 
-    fn reset(self) -> &'a mut TextComponent {
+    fn reset(self) -> &'a mut RawTextComponent<'a> {
         self.format.color = Some(Color::White);
         self.format.font = Some(Cow::Borrowed("minecraft:default"));
         self.format.bold = Some(false);
@@ -533,5 +547,184 @@ impl<'a> Modifier for &'a mut TextComponent {
         self.format.obfuscated = Some(false);
         self.format.shadow_color = None;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resolving::{BuildTarget, NoResolutor, TextResolutor};
+    use std::borrow::Cow;
+
+    struct StringTarget;
+    impl<'a> BuildTarget<'a> for StringTarget {
+        type Result = String;
+        fn build_component<R: TextResolutor<'a> + ?Sized>(
+            &self,
+            _resolutor: &R,
+            component: &RawTextComponent<'a>,
+        ) -> Self::Result {
+            fn extract_text(comp: &RawTextComponent) -> String {
+                let mut s = match &comp.content {
+                    Content::Text { text } => text.to_string(),
+                    Content::Translate(msg) => msg.key.to_string(),
+                    _ => String::new(),
+                };
+                for child in &comp.children {
+                    s.push_str(&extract_text(child));
+                }
+                s
+            }
+            extract_text(component)
+        }
+    }
+
+    #[test]
+    fn test_new_empty_component() {
+        let component = TextComponent::new();
+        assert_eq!(
+            component.content,
+            Content::Text {
+                text: Cow::Borrowed("")
+            }
+        );
+        assert!(component.children.is_empty());
+    }
+
+    #[test]
+    fn test_plain_text() {
+        let component = TextComponent::plain("Hello");
+        assert_eq!(
+            component.content,
+            Content::Text {
+                text: Cow::Borrowed("Hello")
+            }
+        );
+    }
+
+    #[test]
+    fn test_const_plain() {
+        let component = TextComponent::const_plain("World");
+        assert_eq!(
+            component.content,
+            Content::Text {
+                text: Cow::Borrowed("World")
+            }
+        );
+    }
+
+    #[test]
+    fn test_player_head() {
+        let component = TextComponent::player_head(ObjectPlayer::name("Jeb_"), true);
+        assert!(matches!(
+            component.content,
+            Content::Object(Object::Player { .. })
+        ));
+    }
+
+    #[test]
+    fn test_scoreboard() {
+        let component = TextComponent::scoreboard("@p", "deaths");
+        assert!(matches!(
+            component.content,
+            Content::Resolvable(Resolvable::Scoreboard { .. })
+        ));
+    }
+
+    #[test]
+    fn test_add_child_and_children() {
+        let parent = TextComponent::plain("Parent")
+            .add_child("Child1")
+            .add_children(vec!["Child2", "Child3"]);
+        assert_eq!(parent.children.len(), 3);
+        assert_eq!(
+            parent.children[0].content,
+            Content::Text {
+                text: Cow::Borrowed("Child1")
+            }
+        );
+    }
+
+    #[test]
+    fn test_insertion() {
+        let component = TextComponent::plain("text").insertion("insert me");
+        assert_eq!(
+            component.interactions.insertion,
+            Some(Cow::Borrowed("insert me"))
+        );
+    }
+
+    #[test]
+    fn test_click_event() {
+        let event = ClickEvent::open_url("http://example.com");
+        let component = TextComponent::plain("link").click_event(event.clone());
+        assert_eq!(component.interactions.click, Some(event));
+    }
+
+    #[test]
+    fn test_hover_event() {
+        let hover = HoverEvent::show_text("tooltip");
+        let component = TextComponent::plain("hover").hover_event(hover.clone());
+        assert_eq!(component.interactions.hover, Some(hover));
+    }
+
+    #[test]
+    fn test_color_and_hex() {
+        let component = TextComponent::plain("colored").color_hex("#00ff00");
+        assert!(component.format.color.is_some());
+    }
+
+    #[test]
+    fn test_formatting_bold_italic_underline() {
+        let component = TextComponent::plain("f")
+            .bold(true)
+            .italic(true)
+            .underlined(true)
+            .strikethrough(false);
+        assert_eq!(component.format.bold, Some(true));
+        assert_eq!(component.format.italic, Some(true));
+        assert_eq!(component.format.underlined, Some(true));
+        assert_eq!(component.format.strikethrough, Some(false));
+    }
+
+    #[test]
+    fn test_reset_formatting() {
+        let component = TextComponent::plain("x")
+            .color(Color::Blue)
+            .bold(true)
+            .italic(true)
+            .reset();
+        assert_eq!(component.format.color, Some(Color::White));
+        assert_eq!(component.format.bold, Some(false));
+        assert_eq!(component.format.italic, Some(false));
+        assert_eq!(
+            component.format.font,
+            Some(Cow::Borrowed("minecraft:default"))
+        );
+    }
+
+    #[test]
+    fn test_resolve_scoreboard_noresolutor() {
+        let component = TextComponent::scoreboard("@p", "score");
+        let resolved = component.resolve(&NoResolutor);
+        assert!(
+            matches!(resolved.content, Content::Text { text } if text.contains("[Score: score]"))
+        );
+    }
+
+    #[test]
+    fn test_resolve_entity_noresolutor() {
+        let component = TextComponent::entity("@a", None);
+        let resolved = component.resolve(&NoResolutor);
+        assert!(
+            matches!(resolved.content, Content::Text { text } if text.contains("[Entity: @a]"))
+        );
+    }
+
+    #[test]
+    fn test_build_plain_text() {
+        let component = TextComponent::plain("Hello world");
+        let result = component.build(&NoResolutor, StringTarget);
+        assert_eq!(result, "Hello world");
     }
 }

@@ -2,8 +2,9 @@ use colored::{ColoredString, Colorize};
 use std::{borrow::Cow, fmt::Display};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct Format {
+pub struct Format<'a> {
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
@@ -13,7 +14,7 @@ pub struct Format {
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
     )]
-    pub font: Option<Cow<'static, str>>,
+    pub font: Option<Cow<'a, str>>,
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
@@ -46,12 +47,12 @@ pub struct Format {
     pub shadow_color: Option<i64>,
 }
 
-impl Default for Format {
+impl<'a> Default for Format<'a> {
     fn default() -> Self {
         Self::new()
     }
 }
-impl Format {
+impl<'a> Format<'a> {
     pub const fn new() -> Self {
         Self {
             color: None,
@@ -84,7 +85,7 @@ impl Format {
         }
         self
     }
-    pub fn font<F: Into<Cow<'static, str>>>(mut self, font: F) -> Self {
+    pub fn font(mut self, font: impl Into<Cow<'a, str>>) -> Self {
         self.font = Some(font.into());
         self
     }
@@ -126,12 +127,12 @@ impl Format {
         self.shadow_color = None;
         self
     }
-    pub fn mix(&self, other: &Format) -> Format {
+    pub fn mix(&self, other: &Format<'a>) -> Format<'a> {
         Format {
             color: if self.color.is_some() {
-                self.color.clone()
+                self.color
             } else {
-                other.color.clone()
+                other.color
             },
             font: if self.font.is_some() {
                 self.font.clone()
@@ -172,7 +173,8 @@ impl Format {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Color {
@@ -211,28 +213,31 @@ impl Color {
         }
         None
     }
-    pub fn colorize_text<T: Into<String>>(&self, text: T) -> ColoredString {
+
+    pub fn colorize_text(&self, text: impl Into<String>) -> ColoredString {
+        let text = text.into();
         match self {
-            Color::Black => text.into().black(),
-            Color::DarkBlue => text.into().blue(),
-            Color::DarkGreen => text.into().green(),
-            Color::DarkAqua => text.into().cyan(),
-            Color::DarkRed => text.into().red(),
-            Color::DarkPurple => text.into().magenta(),
-            Color::Gold => text.into().yellow(),
-            Color::Gray => text.into().white(),
-            Color::DarkGray => text.into().bright_black(),
-            Color::Blue => text.into().bright_blue(),
-            Color::Green => text.into().bright_green(),
-            Color::Aqua => text.into().bright_cyan(),
-            Color::Red => text.into().bright_red(),
-            Color::LightPurple => text.into().bright_magenta(),
-            Color::Yellow => text.into().bright_yellow(),
-            Color::White => text.into().bright_white(),
-            Color::Rgb(r, g, b) => text.into().truecolor(*r, *g, *b),
+            Color::Black => text.black(),
+            Color::DarkBlue => text.blue(),
+            Color::DarkGreen => text.green(),
+            Color::DarkAqua => text.cyan(),
+            Color::DarkRed => text.red(),
+            Color::DarkPurple => text.magenta(),
+            Color::Gold => text.yellow(),
+            Color::Gray => text.white(),
+            Color::DarkGray => text.bright_black(),
+            Color::Blue => text.bright_blue(),
+            Color::Green => text.bright_green(),
+            Color::Aqua => text.bright_cyan(),
+            Color::Red => text.bright_red(),
+            Color::LightPurple => text.bright_magenta(),
+            Color::Yellow => text.bright_yellow(),
+            Color::White => text.bright_white(),
+            Color::Rgb(r, g, b) => text.truecolor(*r, *g, *b),
         }
     }
 }
+
 impl Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

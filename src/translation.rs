@@ -1,28 +1,29 @@
-use crate::TextComponent;
+use crate::RawTextComponent;
 use std::borrow::Cow;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct TranslatedMessage {
+pub struct TranslatedMessage<'a> {
     #[cfg_attr(feature = "serde", serde(rename = "translate"))]
-    pub key: Cow<'static, str>,
+    pub key: Cow<'a, str>,
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
     )]
-    pub fallback: Option<Cow<'static, str>>,
+    pub fallback: Option<Cow<'a, str>>,
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", rename = "with", default)
     )]
-    pub args: Option<Box<[TextComponent]>>,
+    pub args: Option<Box<[RawTextComponent<'a>]>>,
 }
-impl TranslatedMessage {
+impl<'a> TranslatedMessage<'a> {
     /// Creates a new `TranslatedMessage` without fallback.
     /// ### Warning
     /// Using this method directly is discouraged.
     /// Please use a compiled [Translation] instead.
-    pub const fn new(key: &'static str, args: Option<Box<[TextComponent]>>) -> Self {
+    pub const fn new(key: &'a str, args: Option<Box<[RawTextComponent<'a>]>>) -> Self {
         Self {
             key: Cow::Borrowed(key),
             args,
@@ -31,42 +32,42 @@ impl TranslatedMessage {
     }
 
     #[inline]
-    pub fn component(self) -> TextComponent {
-        TextComponent::translated(self)
+    pub fn component(self) -> RawTextComponent<'a> {
+        RawTextComponent::translated(self)
     }
     #[inline]
-    pub fn component_fallback<F: Into<Cow<'static, str>>>(mut self, fallback: F) -> TextComponent {
+    pub fn component_fallback(mut self, fallback: impl Into<Cow<'a, str>>) -> RawTextComponent<'a> {
         self.fallback = Some(fallback.into());
-        TextComponent::translated(self)
+        RawTextComponent::translated(self)
     }
 }
 
-impl From<TranslatedMessage> for TextComponent {
-    fn from(value: TranslatedMessage) -> Self {
+impl<'a> From<TranslatedMessage<'a>> for RawTextComponent<'a> {
+    fn from(value: TranslatedMessage<'a>) -> Self {
         value.component()
     }
 }
 
-pub struct Translation<const ARGS: usize>(pub &'static str);
+pub struct Translation<'a, const ARGS: usize>(pub &'a str);
 
-impl Translation<0> {
+impl<'a> Translation<'a, 0> {
     /// Creates a new `TranslatedMessage` with no arguments.
     #[must_use]
-    pub const fn msg(&self) -> TranslatedMessage {
+    pub const fn msg(&self) -> TranslatedMessage<'_> {
         TranslatedMessage::new(self.0, None)
     }
 }
 
-impl<const ARGS: usize> Translation<ARGS> {
+impl<'a, const ARGS: usize> Translation<'a, ARGS> {
     /// Creates a new `TranslatedMessage` with the given arguments.
     #[must_use]
-    pub fn message(&self, args: [impl Into<TextComponent>; ARGS]) -> TranslatedMessage {
+    pub fn message(&self, args: [impl Into<RawTextComponent<'a>>; ARGS]) -> TranslatedMessage<'_> {
         TranslatedMessage::new(self.0, Some(Box::new(args.map(Into::into))))
     }
 }
 
-impl From<&Translation<0>> for TextComponent {
-    fn from(value: &Translation<0>) -> Self {
+impl<'a> From<&'a Translation<'a, 0>> for RawTextComponent<'a> {
+    fn from(value: &'a Translation<'a, 0>) -> Self {
         value.msg().component()
     }
 }

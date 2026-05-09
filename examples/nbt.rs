@@ -1,6 +1,6 @@
 use simdnbt::owned::{BaseNbt, Nbt, NbtCompound, NbtTag};
 use text_components::{
-    Modifier, TextComponent,
+    Modifier, RawTextComponent,
     format::Color,
     interactivity::{ClickEvent, HoverEvent},
     nbt::{NbtBuilder, ToSNBT},
@@ -19,7 +19,7 @@ fn main() -> Result<(), String> {
             ("string".into(), NbtTag::String("This is a text".into())),
         ]),
     ));
-    let component = TextComponent::nbt_display(nbt);
+    let component = RawTextComponent::nbt_display(nbt);
     println!(
         "tellraw @p {}",
         component.build(&NoResolutor, NbtBuilder).to_snbt()
@@ -38,8 +38,8 @@ fn main() -> Result<(), String> {
         ])
         .build(&NoResolutor, NbtBuilder);
     println!("{:?}", nbt);
-    let component =
-        TextComponent::from_nbt(&nbt).ok_or(String::from("Cannot recompose the TextComponent!"))?;
+    let component = RawTextComponent::from_nbt(&nbt)
+        .ok_or(String::from("Cannot recompose the TextComponent!"))?;
     println!("{:?}", component);
     println!("{:p}", component);
     Ok(())

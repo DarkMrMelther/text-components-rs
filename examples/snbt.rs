@@ -1,4 +1,4 @@
-use text_components::TextComponent;
+use text_components::RawTextComponent;
 
 fn main() {
     use std::io::{Write, stdin, stdout};
@@ -14,7 +14,7 @@ fn main() {
     if let Some('\r') = s.chars().next_back() {
         s.pop();
     }
-    let component = TextComponent::from_snbt(&s);
+    let component = RawTextComponent::from_snbt(&s);
     match component {
         Ok(component) => {
             println!("{:?}", component);
