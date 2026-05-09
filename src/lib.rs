@@ -317,6 +317,12 @@ impl<'a> RawTextComponent<'a> {
             interactions: Interactivity::new(),
         }
     }
+
+    #[cfg(feature = "minimessage")]
+    pub fn minimessage<T: Into<&'a str>>(text: T) -> RawTextComponent<'a> {
+        use crate::minimessage::Parser;
+        Parser::parse(text.into())
+    }
 }
 
 impl<'a> Default for RawTextComponent<'a> {
@@ -544,5 +550,184 @@ impl<'a> Modifier<'a> for &'a mut RawTextComponent<'a> {
         self.format.obfuscated = Some(false);
         self.format.shadow_color = None;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resolving::{BuildTarget, NoResolutor, TextResolutor};
+    use std::borrow::Cow;
+
+    struct StringTarget;
+    impl<'a> BuildTarget<'a> for StringTarget {
+        type Result = String;
+        fn build_component<R: TextResolutor<'a> + ?Sized>(
+            &self,
+            _resolutor: &R,
+            component: &RawTextComponent<'a>,
+        ) -> Self::Result {
+            fn extract_text(comp: &RawTextComponent) -> String {
+                let mut s = match &comp.content {
+                    Content::Text { text } => text.to_string(),
+                    Content::Translate(msg) => msg.key.to_string(),
+                    _ => String::new(),
+                };
+                for child in &comp.children {
+                    s.push_str(&extract_text(child));
+                }
+                s
+            }
+            extract_text(component)
+        }
+    }
+
+    #[test]
+    fn test_new_empty_component() {
+        let component = TextComponent::new();
+        assert_eq!(
+            component.content,
+            Content::Text {
+                text: Cow::Borrowed("")
+            }
+        );
+        assert!(component.children.is_empty());
+    }
+
+    #[test]
+    fn test_plain_text() {
+        let component = TextComponent::plain("Hello");
+        assert_eq!(
+            component.content,
+            Content::Text {
+                text: Cow::Borrowed("Hello")
+            }
+        );
+    }
+
+    #[test]
+    fn test_const_plain() {
+        let component = TextComponent::const_plain("World");
+        assert_eq!(
+            component.content,
+            Content::Text {
+                text: Cow::Borrowed("World")
+            }
+        );
+    }
+
+    #[test]
+    fn test_player_head() {
+        let component = TextComponent::player_head(ObjectPlayer::name("Jeb_"), true);
+        assert!(matches!(
+            component.content,
+            Content::Object(Object::Player { .. })
+        ));
+    }
+
+    #[test]
+    fn test_scoreboard() {
+        let component = TextComponent::scoreboard("@p", "deaths");
+        assert!(matches!(
+            component.content,
+            Content::Resolvable(Resolvable::Scoreboard { .. })
+        ));
+    }
+
+    #[test]
+    fn test_add_child_and_children() {
+        let parent = TextComponent::plain("Parent")
+            .add_child("Child1")
+            .add_children(vec!["Child2", "Child3"]);
+        assert_eq!(parent.children.len(), 3);
+        assert_eq!(
+            parent.children[0].content,
+            Content::Text {
+                text: Cow::Borrowed("Child1")
+            }
+        );
+    }
+
+    #[test]
+    fn test_insertion() {
+        let component = TextComponent::plain("text").insertion("insert me");
+        assert_eq!(
+            component.interactions.insertion,
+            Some(Cow::Borrowed("insert me"))
+        );
+    }
+
+    #[test]
+    fn test_click_event() {
+        let event = ClickEvent::open_url("http://example.com");
+        let component = TextComponent::plain("link").click_event(event.clone());
+        assert_eq!(component.interactions.click, Some(event));
+    }
+
+    #[test]
+    fn test_hover_event() {
+        let hover = HoverEvent::show_text("tooltip");
+        let component = TextComponent::plain("hover").hover_event(hover.clone());
+        assert_eq!(component.interactions.hover, Some(hover));
+    }
+
+    #[test]
+    fn test_color_and_hex() {
+        let component = TextComponent::plain("colored").color_hex("#00ff00");
+        assert!(component.format.color.is_some());
+    }
+
+    #[test]
+    fn test_formatting_bold_italic_underline() {
+        let component = TextComponent::plain("f")
+            .bold(true)
+            .italic(true)
+            .underlined(true)
+            .strikethrough(false);
+        assert_eq!(component.format.bold, Some(true));
+        assert_eq!(component.format.italic, Some(true));
+        assert_eq!(component.format.underlined, Some(true));
+        assert_eq!(component.format.strikethrough, Some(false));
+    }
+
+    #[test]
+    fn test_reset_formatting() {
+        let component = TextComponent::plain("x")
+            .color(Color::Blue)
+            .bold(true)
+            .italic(true)
+            .reset();
+        assert_eq!(component.format.color, Some(Color::White));
+        assert_eq!(component.format.bold, Some(false));
+        assert_eq!(component.format.italic, Some(false));
+        assert_eq!(
+            component.format.font,
+            Some(Cow::Borrowed("minecraft:default"))
+        );
+    }
+
+    #[test]
+    fn test_resolve_scoreboard_noresolutor() {
+        let component = TextComponent::scoreboard("@p", "score");
+        let resolved = component.resolve(&NoResolutor);
+        assert!(
+            matches!(resolved.content, Content::Text { text } if text.contains("[Score: score]"))
+        );
+    }
+
+    #[test]
+    fn test_resolve_entity_noresolutor() {
+        let component = TextComponent::entity("@a", None);
+        let resolved = component.resolve(&NoResolutor);
+        assert!(
+            matches!(resolved.content, Content::Text { text } if text.contains("[Entity: @a]"))
+        );
+    }
+
+    #[test]
+    fn test_build_plain_text() {
+        let component = TextComponent::plain("Hello world");
+        let result = component.build(&NoResolutor, StringTarget);
+        assert_eq!(result, "Hello world");
     }
 }

@@ -12,10 +12,11 @@ use std::borrow::Cow;
 #[cfg(feature = "custom")]
 use crate::custom::{CustomData, Payload};
 
-pub fn parse(input: &str) -> TextComponent {
+pub(super) fn parse(input: &str) -> TextComponent {
     parse_raw(input).into_owned()
 }
-pub fn parse_raw<'a>(input: &'a str) -> RawTextComponent<'a> {
+
+pub(super) fn parse_raw<'a>(input: &'a str) -> RawTextComponent<'a> {
     Parser::parse(input)
 }
 
@@ -43,14 +44,14 @@ fn join_with_colon<'a>(args: &[Cow<'a, str>]) -> Cow<'a, str> {
     Cow::Owned(result)
 }
 
-struct Parser<'a> {
+pub(super) struct Parser<'a> {
     nodes: Vec<RawTextComponent<'a>>,
     children: Vec<Vec<usize>>,
     stack: Vec<(usize, Cow<'a, str>)>,
 }
 
 impl<'a> Parser<'a> {
-    fn parse(input: &'a str) -> RawTextComponent<'a> {
+    pub fn parse(input: &'a str) -> RawTextComponent<'a> {
         let mut parser = Parser {
             nodes: vec![RawTextComponent::new()],
             children: vec![Vec::new()],
