@@ -19,14 +19,20 @@ pub fn parse_raw<'a>(input: &'a str) -> RawTextComponent<'a> {
     Parser::parse(input)
 }
 
-fn new_component(content: Content) -> RawTextComponent {
+fn new_component<'a>(content: Content<'a>) -> RawTextComponent<'a> {
     RawTextComponent {
         content,
         ..Default::default()
     }
 }
 
-fn join_with_colon(args: &[Cow<str>]) -> String {
+fn join_with_colon<'a>(args: &[Cow<'a, str>]) -> Cow<'a, str> {
+    if args.is_empty() {
+        return Cow::Borrowed("");
+    }
+    if args.len() == 1 {
+        return args[0].clone();
+    }
     let mut result = String::new();
     for a in args {
         if !result.is_empty() {
@@ -34,7 +40,7 @@ fn join_with_colon(args: &[Cow<str>]) -> String {
         }
         result.push_str(a.as_ref());
     }
-    result
+    Cow::Owned(result)
 }
 
 struct Parser<'a> {
@@ -65,7 +71,7 @@ impl<'a> Parser<'a> {
             if i > start {
                 let text = unescape_text(&input[start..i]);
                 if !text.is_empty() {
-                    let comp = RawTextComponent::plain(text.into_owned());
+                    let comp = RawTextComponent::plain(text);
                     let parent = parser.stack.last().unwrap().0;
                     parser.add_child_node(parent, comp);
                 }
@@ -247,7 +253,7 @@ impl<'a> Parser<'a> {
                 let mut args = args;
                 if let Some(action) = take_first_arg(&mut args) {
                     let value = join_with_colon(&args);
-                    let click = parse_click(&action, &value);
+                    let click = parse_click(&action, value);
                     let mut comp = new_component(Content::Text {
                         text: Cow::Borrowed(""),
                     });
@@ -261,7 +267,7 @@ impl<'a> Parser<'a> {
                 }
             }
             "hover" => {
-                let hover = parse_hover(&args);
+                let hover = parse_hover(args);
                 let mut comp = new_component(Content::Text {
                     text: Cow::Borrowed(""),
                 });
@@ -274,7 +280,7 @@ impl<'a> Parser<'a> {
                     let mut comp = new_component(Content::Text {
                         text: Cow::Borrowed(""),
                     });
-                    comp.interactions.insertion = Some(Cow::Owned(text.into_owned()));
+                    comp.interactions.insertion = Some(text);
                     self.push_tag_to_stack(
                         parent,
                         comp,
@@ -289,9 +295,7 @@ impl<'a> Parser<'a> {
             }
             "key" => {
                 let keybind = join_with_colon(&args);
-                let comp = new_component(Content::Keybind {
-                    keybind: Cow::Owned(keybind),
-                });
+                let comp = new_component(Content::Keybind { keybind });
                 self.add_child_node(parent, comp);
             }
             "lang" | "tr" | "translate" => {
@@ -312,8 +316,8 @@ impl<'a> Parser<'a> {
                     (take_first_arg(&mut args), take_first_arg(&mut args))
                 {
                     let resolvable = Resolvable::Scoreboard {
-                        selector: Cow::Owned(name.into_owned()),
-                        objective: Cow::Owned(objective.into_owned()),
+                        selector: name,
+                        objective,
                     };
                     let comp = new_component(Content::Resolvable(resolvable));
                     self.add_child_node(parent, comp);
@@ -333,10 +337,7 @@ impl<'a> Parser<'a> {
                     None
                 };
                 let sprite = take_first_arg(&mut args).unwrap();
-                let comp = new_component(Content::Object(Object::Atlas {
-                    atlas: atlas.map(|a| Cow::Owned(a.into_owned())),
-                    sprite: Cow::Owned(sprite.into_owned()),
-                }));
+                let comp = new_component(Content::Object(Object::Atlas { atlas, sprite }));
                 self.add_child_node(parent, comp);
             }
             "head" => {
@@ -409,18 +410,21 @@ impl<'a> Parser<'a> {
         let mut args = args;
         let key = take_first_arg(&mut args);
         let fallback = if has_fallback.is_some() {
-            take_first_arg(&mut args).map(|c| Cow::Owned(c.into_owned()))
+            take_first_arg(&mut args)
         } else {
             None
         };
 
         if let Some(key) = key {
-            let t_args: Vec<RawTextComponent> = args
+            let t_args: Vec<RawTextComponent<'a>> = args
                 .into_iter()
-                .map(|a| parse_minimessage(a.as_ref()).into_owned())
+                .map(|a| match a {
+                    Cow::Borrowed(s) => parse_raw(s),
+                    Cow::Owned(ref s) => parse(s),
+                })
                 .collect();
             let msg = TranslatedMessage {
-                key: Cow::Owned(key.into_owned()),
+                key,
                 fallback,
                 args: if t_args.is_empty() {
                     None
@@ -437,12 +441,15 @@ impl<'a> Parser<'a> {
         let mut args = args;
         if let Some(sel) = take_first_arg(&mut args) {
             let separator = if let Some(sep) = take_first_arg(&mut args) {
-                Box::new(parse_minimessage(&sep).into_owned())
+                match sep {
+                    Cow::Borrowed(s) => Box::new(parse_raw(s)),
+                    Cow::Owned(ref s) => Box::new(parse(s)),
+                }
             } else {
                 Resolvable::entity_separator()
             };
             let resolvable = Resolvable::Entity {
-                selector: Cow::Owned(sel.into_owned()),
+                selector: sel,
                 separator,
             };
             let comp = new_component(Content::Resolvable(resolvable));
@@ -453,27 +460,28 @@ impl<'a> Parser<'a> {
     fn handle_nbt_tag(&mut self, args: SmallVec<[Cow<'a, str>; 4]>, parent: usize) {
         let mut args = args;
         if args.len() >= 3 {
-            let source_type = take_first_arg(&mut args)
-                .map(|c| c.into_owned())
-                .unwrap_or_default();
-            let id = take_first_arg(&mut args).map(|c| c.into_owned());
-            let path = take_first_arg(&mut args).map(|c| c.into_owned());
+            let source_type = take_first_arg(&mut args).unwrap_or(Cow::Borrowed(""));
+            let id = take_first_arg(&mut args);
+            let path = take_first_arg(&mut args);
             if let (Some(id), Some(path)) = (id, path) {
-                let sep = take_first_arg(&mut args).map(|c| c.into_owned());
+                let sep = take_first_arg(&mut args);
                 let separator = if let Some(s) = sep {
-                    Box::new(parse_minimessage(&s).into_owned())
+                    match s {
+                        Cow::Borrowed(s) => Box::new(parse_raw(s)),
+                        Cow::Owned(ref s) => Box::new(parse(s)),
+                    }
                 } else {
                     Resolvable::nbt_separator()
                 };
                 let interpret = args.first().is_some_and(|v| v.as_ref() == "interpret");
-                let source = match source_type.as_str() {
-                    "entity" => NbtSource::Entity(Cow::Owned(id)),
-                    "block" => NbtSource::Block(Cow::Owned(id)),
-                    "storage" => NbtSource::Storage(Cow::Owned(id)),
+                let source = match source_type.as_ref() {
+                    "entity" => NbtSource::Entity(id),
+                    "block" => NbtSource::Block(id),
+                    "storage" => NbtSource::Storage(id),
                     _ => return,
                 };
                 let resolvable = Resolvable::NBT {
-                    path: Cow::Owned(path),
+                    path,
                     interpret: if interpret { Some(true) } else { None },
                     separator,
                     source,
@@ -497,10 +505,10 @@ impl<'a> Parser<'a> {
                     low as i32,
                 ];
                 ObjectPlayer::id(id)
-            } else if head_str.contains('/') || head_str.contains(':') {
-                ObjectPlayer::texture(head_str.into_owned())
+            } else if head_str.as_ref().contains('/') || head_str.as_ref().contains(':') {
+                ObjectPlayer::texture(head_str)
             } else {
-                ObjectPlayer::name(head_str.into_owned())
+                ObjectPlayer::name(head_str)
             };
             let comp = new_component(Content::Object(Object::Player {
                 player,
@@ -533,7 +541,7 @@ fn take_first_arg<'a>(args: &mut SmallVec<[Cow<'a, str>; 4]>) -> Option<Cow<'a, 
     Some(args.remove(0))
 }
 
-fn unescape_text(s: &str) -> Cow<'_, str> {
+fn unescape_text<'a>(s: &'a str) -> Cow<'a, str> {
     if !s.contains('\\') {
         return Cow::Borrowed(s);
     }
@@ -712,31 +720,20 @@ fn color_to_rgb(color: &Color) -> (u8, u8, u8) {
     }
 }
 
-fn parse_click<'a>(action: &str, value: &str) -> Option<ClickEvent<'a>> {
-    let value_str = value.to_string();
+fn parse_click<'a>(action: &str, value: Cow<'a, str>) -> Option<ClickEvent<'a>> {
     let event = match action {
-        "open_url" => ClickEvent::OpenUrl {
-            url: Cow::Owned(value_str.clone()),
-        },
-        "run_command" => ClickEvent::RunCommand {
-            command: Cow::Owned(value_str.clone()),
-        },
-        "suggest_command" => ClickEvent::SuggestCommand {
-            command: Cow::Owned(value_str.clone()),
-        },
+        "open_url" => ClickEvent::OpenUrl { url: value },
+        "run_command" => ClickEvent::RunCommand { command: value },
+        "suggest_command" => ClickEvent::SuggestCommand { command: value },
         "change_page" => {
-            let page = value.parse::<i32>().ok()?;
+            let page = value.as_ref().parse::<i32>().ok()?;
             ClickEvent::ChangePage { page }
         }
-        "copy_to_clipboard" => ClickEvent::CopyToClipboard {
-            value: Cow::Owned(value_str.clone()),
-        },
-        "show_dialog" => ClickEvent::ShowDialog {
-            dialog: Cow::Owned(value_str.clone()),
-        },
+        "copy_to_clipboard" => ClickEvent::CopyToClipboard { value },
+        "show_dialog" => ClickEvent::ShowDialog { dialog: value },
         #[cfg(feature = "custom")]
         "custom" => ClickEvent::Custom(CustomData {
-            id: Cow::Owned(value_str),
+            id: value,
             payload: Payload::Empty,
         }),
         _ => return None,
@@ -744,43 +741,43 @@ fn parse_click<'a>(action: &str, value: &str) -> Option<ClickEvent<'a>> {
     Some(event)
 }
 
-fn parse_hover<'a>(args: &[Cow<'a, str>]) -> Option<HoverEvent<'a>> {
+fn parse_hover<'a>(args: SmallVec<[Cow<'a, str>; 4]>) -> Option<HoverEvent<'a>> {
     let first = args.first()?.as_ref();
     match first {
         "show_text" => {
-            let text = parse_minimessage(args.get(1)?.as_ref()).into_owned();
+            let cow = args.get(1)?.clone(); // Cow копирует ссылку или владение
+            let text = match cow {
+                Cow::Borrowed(s) => parse_raw(s),
+                Cow::Owned(ref s) => parse(s),
+            };
             Some(HoverEvent::ShowText {
                 value: Box::new(text),
             })
         }
         "show_item" => {
-            let id = args.get(1)?.to_string();
+            let id = args.get(1)?.clone();
             let count = args.get(2).and_then(|s| s.parse::<i32>().ok());
-            let components = args.get(3).map(|s| Cow::Owned(s.to_string()));
+            let components = args.get(3).cloned();
             Some(HoverEvent::ShowItem {
-                id: Cow::Owned(id),
+                id,
                 count,
                 components,
             })
         }
         "show_entity" => {
-            let id = args.get(1)?.to_string();
+            let id = args.get(1)?.clone();
             let uuid = uuid::Uuid::parse_str(args.get(2)?.as_ref()).ok()?;
-            let name = args
-                .get(3)
-                .map(|s| Box::new(parse_minimessage(s.as_ref()).into_owned()));
-            Some(HoverEvent::ShowEntity {
-                name,
-                id: Cow::Owned(id),
-                uuid,
-            })
+            let name_cow = args.get(3).cloned();
+            let name = name_cow.map(|cow| {
+                Box::new(match cow {
+                    Cow::Borrowed(s) => parse_raw(s),
+                    Cow::Owned(ref s) => parse(s),
+                })
+            });
+            Some(HoverEvent::ShowEntity { name, id, uuid })
         }
         _ => None,
     }
-}
-
-fn parse_minimessage<'a>(s: &'a str) -> RawTextComponent<'a> {
-    parse(s)
 }
 
 fn parse_shadow<'a>(args: &[Cow<'a, str>]) -> Format<'a> {
@@ -794,7 +791,8 @@ fn parse_shadow<'a>(args: &[Cow<'a, str>]) -> Format<'a> {
             .and_then(|a| a.parse::<f32>().ok())
             .map(|f| (f * 255.0).round() as u8)
     };
-    let shadow = if let Some(hex) = color_arg.strip_prefix('#') {
+
+    let shadow = if let Some(hex) = color_arg.as_ref().strip_prefix('#') {
         if hex.len() == 8 {
             if let (Ok(r), Ok(g), Ok(b), Ok(a)) = (
                 u8::from_str_radix(&hex[0..2], 16),
@@ -820,13 +818,14 @@ fn parse_shadow<'a>(args: &[Cow<'a, str>]) -> Format<'a> {
         } else {
             None
         }
-    } else if let Some(color) = parse_color(color_arg) {
+    } else if let Some(color) = parse_color(color_arg.as_ref()) {
         let (r, g, b) = color_to_rgb(&color);
         let a = alpha_from_args(1).unwrap_or(64);
         Some(Format::parse_shadow_color(a, r, g, b))
     } else {
         None
     };
+
     if let Some(s) = shadow {
         format.shadow_color = Some(s);
     }
