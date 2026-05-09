@@ -92,17 +92,17 @@ pub enum ClickEvent<'a> {
 }
 impl<'a> ClickEvent<'a> {
     /// Creates a [ClickEvent] that opens a url when triggered.
-    pub fn open_url<T: Into<Cow<'a, str>>>(url: T) -> Self {
+    pub fn open_url(url: impl Into<Cow<'a, str>>) -> Self {
         ClickEvent::OpenUrl { url: url.into() }
     }
     /// Creates a [ClickEvent] that runs a command when triggered.
-    pub fn run_command<T: Into<Cow<'a, str>>>(command: T) -> Self {
+    pub fn run_command(command: impl Into<Cow<'a, str>>) -> Self {
         ClickEvent::RunCommand {
             command: command.into(),
         }
     }
     /// Creates a [ClickEvent] that replaces the chat input with a command when triggered.
-    pub fn suggest_command<T: Into<Cow<'a, str>>>(command: T) -> Self {
+    pub fn suggest_command(command: impl Into<Cow<'a, str>>) -> Self {
         ClickEvent::SuggestCommand {
             command: command.into(),
         }
@@ -112,14 +112,14 @@ impl<'a> ClickEvent<'a> {
         ClickEvent::ChangePage { page: page as i32 }
     }
     /// Creates a [ClickEvent] that copies it's content to the clipboard when triggered.
-    pub fn copy_to_clipboard<T: Into<Cow<'a, str>>>(value: T) -> Self {
+    pub fn copy_to_clipboard(value: impl Into<Cow<'a, str>>) -> Self {
         ClickEvent::CopyToClipboard {
             value: value.into(),
         }
     }
     /// Creates a [ClickEvent] that shows a custom dialog when triggered.
     /// * `dialog` - Either a dialog id or a dialog definition
-    pub fn show_dialog<T: Into<Cow<'a, str>>>(dialog: T) -> Self {
+    pub fn show_dialog(dialog: impl Into<Cow<'a, str>>) -> Self {
         ClickEvent::ShowDialog {
             dialog: dialog.into(),
         }
@@ -160,7 +160,7 @@ pub enum HoverEvent<'a> {
 }
 impl<'a> HoverEvent<'a> {
     /// Creates a [HoverEvent] that will show a text component.
-    pub fn show_text<T: Into<RawTextComponent<'a>>>(text: T) -> Self {
+    pub fn show_text(text: impl Into<RawTextComponent<'a>>) -> Self {
         HoverEvent::ShowText {
             value: Box::new(text.into()),
         }
@@ -169,10 +169,10 @@ impl<'a> HoverEvent<'a> {
     /// * `id` - The id of the item
     /// * `count` - If [Some] shows the amount of items
     /// * `components` - An optional stringified version of the item's components
-    pub fn show_item<T: Into<Cow<'a, str>>, R: Into<Cow<'a, str>>>(
-        id: T,
+    pub fn show_item(
+        id: impl Into<Cow<'a, str>>,
         count: Option<i32>,
-        components: Option<R>,
+        components: Option<impl Into<Cow<'a, str>>>,
     ) -> Self {
         HoverEvent::ShowItem {
             id: id.into(),
@@ -184,10 +184,10 @@ impl<'a> HoverEvent<'a> {
     /// * `id` - The id of the entity's type
     /// * `uuid` - The id of the targeted entity
     /// * `name` - If [Some] the name to display
-    pub fn show_entity<T: Into<Cow<'a, str>>, R: Into<RawTextComponent<'a>>>(
-        id: T,
+    pub fn show_entity(
+        id: impl Into<Cow<'a, str>>,
         uuid: Uuid,
-        name: Option<R>,
+        name: Option<impl Into<RawTextComponent<'a>>>,
     ) -> Self {
         HoverEvent::ShowEntity {
             name: name.map(|r| Box::new(r.into())),

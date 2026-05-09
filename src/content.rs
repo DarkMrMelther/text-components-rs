@@ -81,7 +81,7 @@ pub struct ObjectPlayer<'a> {
 }
 impl<'a> ObjectPlayer<'a> {
     /// Creates a [ObjectPlayer] from a player's name.
-    pub fn name<T: Into<Cow<'a, str>>>(name: T) -> Self {
+    pub fn name(name: impl Into<Cow<'a, str>>) -> Self {
         ObjectPlayer {
             name: Some(name.into()),
             id: None,
@@ -99,7 +99,7 @@ impl<'a> ObjectPlayer<'a> {
         }
     }
     /// Creates a [ObjectPlayer] from the path to a texture of a resource pack.
-    pub fn texture<T: Into<Cow<'a, str>>>(path: T) -> Self {
+    pub fn texture(path: impl Into<Cow<'a, str>>) -> Self {
         ObjectPlayer {
             name: None,
             id: None,
@@ -110,9 +110,9 @@ impl<'a> ObjectPlayer<'a> {
     /// Creates a [ObjectPlayer] from a player's skin properties.
     /// * `value` - A [texture data json](https://minecraft.wiki/w/Mojang_API#Query_player's_skin_and_cape) encoded in Base64
     /// * `signature` - An optional Mojang's signature, also encoded in Base64
-    pub fn property<T: Into<Cow<'a, str>>, R: Into<Cow<'a, str>>>(
-        value: T,
-        signature: Option<R>,
+    pub fn property(
+        value: impl Into<Cow<'a, str>>,
+        signature: Option<impl Into<Cow<'a, str>>>,
     ) -> Self {
         ObjectPlayer {
             name: None,
@@ -213,7 +213,7 @@ pub enum NbtSource<'a> {
 }
 impl<'a> NbtSource<'a> {
     /// Creates a [NbtSource] from a entity selector.
-    pub fn entity<T: Into<Cow<'a, str>>>(selector: T) -> Self {
+    pub fn entity(selector: impl Into<Cow<'a, str>>) -> Self {
         NbtSource::Entity(selector.into())
     }
     /// Creates a [NbtSource] from a block coordinates.
@@ -221,7 +221,7 @@ impl<'a> NbtSource<'a> {
         NbtSource::Block(Cow::Owned(format!("{x} {y} {z}")))
     }
     /// Creates a [NbtSource] from a Nbt Storage identifier.
-    pub fn storage<T: Into<Cow<'a, str>>>(identifier: T) -> Self {
+    pub fn storage(identifier: impl Into<Cow<'a, str>>) -> Self {
         NbtSource::Storage(identifier.into())
     }
 }

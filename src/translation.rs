@@ -36,10 +36,7 @@ impl<'a> TranslatedMessage<'a> {
         RawTextComponent::translated(self)
     }
     #[inline]
-    pub fn component_fallback<F: Into<Cow<'a, str>>>(
-        mut self,
-        fallback: F,
-    ) -> RawTextComponent<'a> {
+    pub fn component_fallback(mut self, fallback: impl Into<Cow<'a, str>>) -> RawTextComponent<'a> {
         self.fallback = Some(fallback.into());
         RawTextComponent::translated(self)
     }

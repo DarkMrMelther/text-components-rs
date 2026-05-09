@@ -148,7 +148,7 @@ impl<'a> RawTextComponent<'a> {
     /// ```
     /// let component: TextComponent = "Test Component".into();
     /// ```
-    pub fn plain<T: Into<Cow<'a, str>>>(text: T) -> Self {
+    pub fn plain(text: impl Into<Cow<'a, str>>) -> Self {
         RawTextComponent {
             content: Content::Text { text: text.into() },
             children: vec![],
@@ -195,10 +195,7 @@ impl<'a> RawTextComponent<'a> {
     /// // Displays the Diamond Sword sprite
     /// TextComponent::atlas("item/diamond_sword", Some("minecraft:items"));
     /// ```
-    pub fn atlas<T: Into<Cow<'a, str>>, R: Into<Cow<'a, str>>>(
-        sprite: T,
-        atlas: Option<R>,
-    ) -> Self {
+    pub fn atlas(sprite: impl Into<Cow<'a, str>>, atlas: Option<impl Into<Cow<'a, str>>>) -> Self {
         RawTextComponent {
             content: Content::Object(Object::Atlas {
                 atlas: atlas.map(Into::into),
@@ -236,9 +233,9 @@ impl<'a> RawTextComponent<'a> {
     /// TextComponent::scoreboard("@p", "deaths");
     /// ```
     /// #### Needs [resolution](TextComponent::resolve)
-    pub fn scoreboard<T: Into<Cow<'a, str>>, R: Into<Cow<'a, str>>>(
-        selector: T,
-        objective: R,
+    pub fn scoreboard(
+        selector: impl Into<Cow<'a, str>>,
+        objective: impl Into<Cow<'a, str>>,
     ) -> Self {
         RawTextComponent {
             content: Content::Resolvable(Resolvable::Scoreboard {
@@ -260,7 +257,7 @@ impl<'a> RawTextComponent<'a> {
     /// TextComponent::entity("@a", Some(" ".into()));
     /// ```
     /// #### Needs [resolution](TextComponent::resolve)
-    pub fn entity<T: Into<Cow<'a, str>>>(selector: T, separator: Option<Self>) -> Self {
+    pub fn entity(selector: impl Into<Cow<'a, str>>, separator: Option<Self>) -> Self {
         RawTextComponent {
             content: Content::Resolvable(Resolvable::Entity {
                 selector: selector.into(),
@@ -286,8 +283,8 @@ impl<'a> RawTextComponent<'a> {
     /// TextComponent::nbt("Health", NbtSource::entity("@p"), false, None);
     /// ```
     /// #### Needs [resolution](TextComponent::resolve)
-    pub fn nbt<T: Into<Cow<'a, str>>>(
-        path: T,
+    pub fn nbt(
+        path: impl Into<Cow<'a, str>>,
         source: NbtSource<'a>,
         interpret: bool,
         separator: Option<Self>,
@@ -309,7 +306,7 @@ impl<'a> RawTextComponent<'a> {
     }
 
     #[cfg(feature = "custom")]
-    pub fn custom<T: CustomContent<'a> + 'a>(content: T) -> RawTextComponent<'a> {
+    pub fn custom(content: impl CustomContent<'a> + 'a) -> RawTextComponent<'a> {
         RawTextComponent {
             content: Content::Custom(content.as_data()),
             children: vec![],
@@ -319,7 +316,7 @@ impl<'a> RawTextComponent<'a> {
     }
 
     #[cfg(feature = "minimessage")]
-    pub fn minimessage<T: Into<&'a str>>(text: T) -> RawTextComponent<'a> {
+    pub fn minimessage(text: impl Into<&'a str>) -> RawTextComponent<'a> {
         use crate::minimessage::Parser;
         Parser::parse(text.into())
     }

@@ -47,7 +47,7 @@ impl<'a> BuildTarget<'a> for NbtBuilder {
 }
 
 impl<'a> RawTextComponent<'a> {
-    pub fn nbt_display<T: Into<NbtTag>>(tag: T) -> Self {
+    pub fn nbt_display(tag: impl Into<NbtTag>) -> Self {
         let tag = tag.into();
         match tag {
             NbtTag::Byte(n) => n

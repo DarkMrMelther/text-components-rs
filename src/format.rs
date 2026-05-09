@@ -85,7 +85,7 @@ impl<'a> Format<'a> {
         }
         self
     }
-    pub fn font<F: Into<Cow<'a, str>>>(mut self, font: F) -> Self {
+    pub fn font(mut self, font: impl Into<Cow<'a, str>>) -> Self {
         self.font = Some(font.into());
         self
     }
@@ -213,28 +213,31 @@ impl Color {
         }
         None
     }
-    pub fn colorize_text<T: Into<String>>(&self, text: T) -> ColoredString {
+
+    pub fn colorize_text(&self, text: impl Into<String>) -> ColoredString {
+        let text = text.into();
         match self {
-            Color::Black => text.into().black(),
-            Color::DarkBlue => text.into().blue(),
-            Color::DarkGreen => text.into().green(),
-            Color::DarkAqua => text.into().cyan(),
-            Color::DarkRed => text.into().red(),
-            Color::DarkPurple => text.into().magenta(),
-            Color::Gold => text.into().yellow(),
-            Color::Gray => text.into().white(),
-            Color::DarkGray => text.into().bright_black(),
-            Color::Blue => text.into().bright_blue(),
-            Color::Green => text.into().bright_green(),
-            Color::Aqua => text.into().bright_cyan(),
-            Color::Red => text.into().bright_red(),
-            Color::LightPurple => text.into().bright_magenta(),
-            Color::Yellow => text.into().bright_yellow(),
-            Color::White => text.into().bright_white(),
-            Color::Rgb(r, g, b) => text.into().truecolor(*r, *g, *b),
+            Color::Black => text.black(),
+            Color::DarkBlue => text.blue(),
+            Color::DarkGreen => text.green(),
+            Color::DarkAqua => text.cyan(),
+            Color::DarkRed => text.red(),
+            Color::DarkPurple => text.magenta(),
+            Color::Gold => text.yellow(),
+            Color::Gray => text.white(),
+            Color::DarkGray => text.bright_black(),
+            Color::Blue => text.bright_blue(),
+            Color::Green => text.bright_green(),
+            Color::Aqua => text.bright_cyan(),
+            Color::Red => text.bright_red(),
+            Color::LightPurple => text.bright_magenta(),
+            Color::Yellow => text.bright_yellow(),
+            Color::White => text.bright_white(),
+            Color::Rgb(r, g, b) => text.truecolor(*r, *g, *b),
         }
     }
 }
+
 impl Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
