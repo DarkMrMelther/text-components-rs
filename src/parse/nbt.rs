@@ -53,7 +53,7 @@ impl TextComponent {
     }
 }
 
-impl Content {
+impl<'a> Content<'a> {
     fn from_compound(compound: &NbtCompound) -> Option<Self> {
         if let Some(tag) = compound.get("text")
             && let NbtTag::String(text) = tag
@@ -297,7 +297,7 @@ impl Content {
     }
 }
 
-impl Format {
+impl<'a> Format<'a> {
     fn from_compound(compound: &NbtCompound) -> Self {
         let mut format = Format::new();
         if let Some(tag) = compound.get("color")
@@ -425,7 +425,7 @@ impl Format {
     }
 }
 
-impl Interactivity {
+impl<'a> Interactivity<'a> {
     fn from_compound(compound: &NbtCompound) -> Self {
         let mut interaction = Interactivity::new();
         if let Some(tag) = compound.get("insertion")
@@ -448,7 +448,7 @@ impl Interactivity {
     }
 }
 
-impl HoverEvent {
+impl<'a> HoverEvent<'a> {
     fn from_compound(compound: &NbtCompound) -> Option<Self> {
         let tag = compound.get("action")?;
         if let NbtTag::String(event) = tag {
@@ -529,7 +529,7 @@ impl HoverEvent {
     }
 }
 
-impl ClickEvent {
+impl<'a> ClickEvent<'a> {
     fn from_compound(compound: &NbtCompound) -> Option<Self> {
         let tag = compound.get("action")?;
         if let NbtTag::String(event) = tag {
@@ -602,7 +602,7 @@ impl ClickEvent {
 }
 
 #[cfg(feature = "custom")]
-impl CustomData {
+impl<'a> CustomData<'a> {
     fn from_compound(compound: &NbtCompound) -> Option<Self> {
         use crate::custom::{CustomData, Payload};
 

@@ -1,18 +1,18 @@
 use std::borrow::Cow;
 
 use crate::{
-    TextComponent,
+    RawTextComponent,
     content::{Content, NbtSource, Object, Resolvable},
     format::{Color, Format},
     interactivity::{ClickEvent, HoverEvent},
     minimessage::*,
 };
 
-fn first_child(comp: &TextComponent) -> &TextComponent {
+fn first_child<'a>(comp: &'a RawTextComponent<'a>) -> &'a RawTextComponent<'a> {
     comp.children.first().expect("expected at least one child")
 }
 
-fn children(comp: &TextComponent) -> &[TextComponent] {
+fn children<'a>(comp: &'a RawTextComponent<'a>) -> &'a [RawTextComponent<'a>] {
     &comp.children
 }
 

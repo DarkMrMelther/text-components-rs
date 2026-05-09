@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::{
-    TextComponent,
+    RawTextComponent, TextComponent,
     content::{Content, NbtSource, Object, ObjectPlayer, Resolvable},
     format::{Color, Format},
     interactivity::{ClickEvent, HoverEvent},
@@ -13,11 +13,14 @@ use std::borrow::Cow;
 use crate::custom::{CustomData, Payload};
 
 pub fn parse(input: &str) -> TextComponent {
+    parse_raw(input).into_owned()
+}
+pub fn parse_raw<'a>(input: &'a str) -> RawTextComponent<'a> {
     Parser::parse(input)
 }
 
-fn new_component(content: Content) -> TextComponent {
-    TextComponent {
+fn new_component(content: Content) -> RawTextComponent {
+    RawTextComponent {
         content,
         ..Default::default()
     }
@@ -35,15 +38,15 @@ fn join_with_colon(args: &[Cow<str>]) -> String {
 }
 
 struct Parser<'a> {
-    nodes: Vec<TextComponent>,
+    nodes: Vec<RawTextComponent<'a>>,
     children: Vec<Vec<usize>>,
     stack: Vec<(usize, Cow<'a, str>)>,
 }
 
 impl<'a> Parser<'a> {
-    fn parse(input: &'a str) -> TextComponent {
+    fn parse(input: &'a str) -> RawTextComponent<'a> {
         let mut parser = Parser {
-            nodes: vec![TextComponent::new()],
+            nodes: vec![RawTextComponent::new()],
             children: vec![Vec::new()],
             stack: vec![(0, Cow::Borrowed(""))],
         };
@@ -62,7 +65,7 @@ impl<'a> Parser<'a> {
             if i > start {
                 let text = unescape_text(&input[start..i]);
                 if !text.is_empty() {
-                    let comp = TextComponent::plain(text.into_owned());
+                    let comp = RawTextComponent::plain(text.into_owned());
                     let parent = parser.stack.last().unwrap().0;
                     parser.add_child_node(parent, comp);
                 }
@@ -123,7 +126,7 @@ impl<'a> Parser<'a> {
         parser.finish()
     }
 
-    fn add_child_node(&mut self, parent: usize, child: TextComponent) -> usize {
+    fn add_child_node(&mut self, parent: usize, child: RawTextComponent<'a>) -> usize {
         if let Content::Text { text: child_text } = &child.content
             && child.format == Format::new()
             && child.interactions == Default::default()
@@ -149,7 +152,7 @@ impl<'a> Parser<'a> {
     fn push_tag_to_stack(
         &mut self,
         parent: usize,
-        comp: TextComponent,
+        comp: RawTextComponent<'a>,
         tag_name: Option<Cow<'a, str>>,
         self_closing: bool,
     ) -> usize {
@@ -163,11 +166,11 @@ impl<'a> Parser<'a> {
     fn push_format_tag(
         &mut self,
         parent: usize,
-        format: Format,
+        format: Format<'a>,
         self_closing: bool,
         tag: &'a str,
     ) -> usize {
-        let comp = TextComponent {
+        let comp = RawTextComponent {
             content: Content::Text {
                 text: Cow::Borrowed(""),
             },
@@ -298,7 +301,7 @@ impl<'a> Parser<'a> {
                 self.handle_translate_tag(args, parent, Some(true));
             }
             "newline" | "br" => {
-                self.add_child_node(parent, TextComponent::plain("\n"));
+                self.add_child_node(parent, RawTextComponent::plain("\n"));
             }
             "selector" | "sel" => {
                 self.handle_selector_tag(args, parent);
@@ -412,9 +415,9 @@ impl<'a> Parser<'a> {
         };
 
         if let Some(key) = key {
-            let t_args: Vec<TextComponent> = args
+            let t_args: Vec<RawTextComponent> = args
                 .into_iter()
-                .map(|a| parse_minimessage(a.as_ref()))
+                .map(|a| parse_minimessage(a.as_ref()).into_owned())
                 .collect();
             let msg = TranslatedMessage {
                 key: Cow::Owned(key.into_owned()),
@@ -434,7 +437,7 @@ impl<'a> Parser<'a> {
         let mut args = args;
         if let Some(sel) = take_first_arg(&mut args) {
             let separator = if let Some(sep) = take_first_arg(&mut args) {
-                Box::new(parse_minimessage(&sep))
+                Box::new(parse_minimessage(&sep).into_owned())
             } else {
                 Resolvable::entity_separator()
             };
@@ -458,7 +461,7 @@ impl<'a> Parser<'a> {
             if let (Some(id), Some(path)) = (id, path) {
                 let sep = take_first_arg(&mut args).map(|c| c.into_owned());
                 let separator = if let Some(s) = sep {
-                    Box::new(parse_minimessage(&s))
+                    Box::new(parse_minimessage(&s).into_owned())
                 } else {
                     Resolvable::nbt_separator()
                 };
@@ -507,12 +510,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn finish(mut self) -> TextComponent {
+    fn finish(mut self) -> RawTextComponent<'a> {
         self.stack.truncate(1);
         self.build_node(0)
     }
 
-    fn build_node(&mut self, idx: usize) -> TextComponent {
+    fn build_node(&mut self, idx: usize) -> RawTextComponent<'a> {
         let child_indices = std::mem::take(&mut self.children[idx]);
         let mut node = std::mem::take(&mut self.nodes[idx]);
         node.children = child_indices
@@ -709,7 +712,7 @@ fn color_to_rgb(color: &Color) -> (u8, u8, u8) {
     }
 }
 
-fn parse_click(action: &str, value: &str) -> Option<ClickEvent> {
+fn parse_click<'a>(action: &str, value: &str) -> Option<ClickEvent<'a>> {
     let value_str = value.to_string();
     let event = match action {
         "open_url" => ClickEvent::OpenUrl {
@@ -741,11 +744,11 @@ fn parse_click(action: &str, value: &str) -> Option<ClickEvent> {
     Some(event)
 }
 
-fn parse_hover(args: &[Cow<str>]) -> Option<HoverEvent> {
+fn parse_hover<'a>(args: &[Cow<'a, str>]) -> Option<HoverEvent<'a>> {
     let first = args.first()?.as_ref();
     match first {
         "show_text" => {
-            let text = parse_minimessage(args.get(1)?.as_ref());
+            let text = parse_minimessage(args.get(1)?.as_ref()).into_owned();
             Some(HoverEvent::ShowText {
                 value: Box::new(text),
             })
@@ -763,7 +766,9 @@ fn parse_hover(args: &[Cow<str>]) -> Option<HoverEvent> {
         "show_entity" => {
             let id = args.get(1)?.to_string();
             let uuid = uuid::Uuid::parse_str(args.get(2)?.as_ref()).ok()?;
-            let name = args.get(3).map(|s| Box::new(parse_minimessage(s.as_ref())));
+            let name = args
+                .get(3)
+                .map(|s| Box::new(parse_minimessage(s.as_ref()).into_owned()));
             Some(HoverEvent::ShowEntity {
                 name,
                 id: Cow::Owned(id),
@@ -774,11 +779,11 @@ fn parse_hover(args: &[Cow<str>]) -> Option<HoverEvent> {
     }
 }
 
-fn parse_minimessage(s: &str) -> TextComponent {
+fn parse_minimessage<'a>(s: &'a str) -> RawTextComponent<'a> {
     parse(s)
 }
 
-fn parse_shadow(args: &[Cow<str>]) -> Format {
+fn parse_shadow<'a>(args: &[Cow<'a, str>]) -> Format<'a> {
     let mut format = Format::new();
     if args.is_empty() {
         return format;

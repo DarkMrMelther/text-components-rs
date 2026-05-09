@@ -12,7 +12,7 @@ use text_components::custom::{CustomContent, CustomData, CustomRegistry, Payload
 #[cfg(feature = "nbt")]
 use text_components::nbt::{NbtBuilder, ToSNBT};
 use text_components::{
-    Modifier, TextComponent,
+    Modifier, RawTextComponent,
     content::{NbtSource, ObjectPlayer, Resolvable},
     fmt::set_display_resolutor,
     format::Color,
@@ -23,7 +23,7 @@ use text_components::{
 use uuid::Uuid;
 
 struct EmptyResolutor;
-impl TextResolutor for EmptyResolutor {
+impl<'a> TextResolutor<'a> for EmptyResolutor {
     fn translate(&self, key: &str) -> Option<String> {
         match key {
             "content" => Some(String::from(
@@ -38,10 +38,10 @@ impl TextResolutor for EmptyResolutor {
             _ => None,
         }
     }
-    fn resolve_content(&self, resolvable: &Resolvable) -> TextComponent {
+    fn resolve_content(&self, resolvable: &Resolvable) -> RawTextComponent<'a> {
         match resolvable {
-            Resolvable::Scoreboard { .. } => TextComponent::plain("5"),
-            Resolvable::Entity { .. } => TextComponent::plain("MrMelther")
+            Resolvable::Scoreboard { .. } => RawTextComponent::plain("5"),
+            Resolvable::Entity { .. } => RawTextComponent::plain("MrMelther")
                 .insertion("MrMelther")
                 .click_event(ClickEvent::suggest_command("/msg MrMelther "))
                 .hover_event(HoverEvent::show_entity(
@@ -50,7 +50,7 @@ impl TextResolutor for EmptyResolutor {
                     Some("MrMelther"),
                 )),
             #[cfg(feature = "nbt")]
-            Resolvable::NBT { .. } => TextComponent::plain(
+            Resolvable::NBT { .. } => RawTextComponent::plain(
                 Nbt::Some(BaseNbt::new(
                     "",
                     NbtCompound::from_values(vec![
@@ -65,12 +65,12 @@ impl TextResolutor for EmptyResolutor {
             ),
             #[cfg(not(feature = "nbt"))]
             Resolvable::NBT { .. } => {
-                TextComponent::plain("{base:3.0d,id:\"minecraft:entity_interaction_range\"}")
+                RawTextComponent::plain("{base:3.0d,id:\"minecraft:entity_interaction_range\"}")
             }
         }
     }
     #[cfg(feature = "custom")]
-    fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent> {
+    fn resolve_custom(&self, data: &CustomData) -> Option<RawTextComponent<'a>> {
         if data.id == "time" {
             return Some(TimeContent.resolve((), Payload::Empty));
         }
@@ -78,14 +78,14 @@ impl TextResolutor for EmptyResolutor {
     }
 }
 #[cfg(feature = "custom")]
-impl CustomRegistry for EmptyResolutor {
+impl<'a> CustomRegistry<'a> for EmptyResolutor {
     type Data = ();
 
-    fn register_content<T: CustomContent>(&mut self, _id: &'static str, _content: T) {
+    fn register_content<T: CustomContent<'a>>(&mut self, _id: &'a str, _content: T) {
         todo!()
     }
 
-    fn get_content(&self, _id: String) -> Box<dyn CustomContent<Reg = Self>> {
+    fn get_content(&self, _id: String) -> Box<dyn CustomContent<'_, Reg = Self>> {
         Box::new(TimeContent)
     }
 }
@@ -96,34 +96,31 @@ const RESOLUBLE: Translation<4> = Translation("resoluble");
 #[cfg(feature = "custom")]
 struct TimeContent;
 #[cfg(feature = "custom")]
-impl CustomContent for TimeContent {
+impl<'a> CustomContent<'a> for TimeContent {
     type Reg = EmptyResolutor;
 
-    fn as_data(&self) -> CustomData {
+    fn as_data(&self) -> CustomData<'a> {
         CustomData {
             id: std::borrow::Cow::Borrowed("time"),
             payload: Payload::Empty,
         }
     }
 
-    fn resolve(&self, _data: (), _payload: Payload) -> TextComponent {
-        TextComponent::plain(Utc::now().format("%H:%M").to_string())
+    fn resolve(&self, _data: (), _payload: Payload) -> RawTextComponent<'a> {
+        RawTextComponent::plain(Utc::now().format("%H:%M").to_string())
     }
 }
 
 fn main() {
     set_display_resolutor(&EmptyResolutor);
-    let mut resolubles = RESOLUBLE
+    let resolubles = RESOLUBLE
         .message([
             ObjectPlayer::name("MrMelther").reset(),
-            TextComponent::scoreboard("MrMelther", "objective").reset(),
-            TextComponent::entity("@p", None).reset(),
-            TextComponent::nbt("attributes[2]", NbtSource::entity("@p"), false, None).reset(),
+            RawTextComponent::scoreboard("MrMelther", "objective").reset(),
+            RawTextComponent::entity("@p", None).reset(),
+            RawTextComponent::nbt("attributes[2]", NbtSource::entity("@p"), false, None).reset(),
         ])
         .color_hex("#6f00ff");
-
-    #[cfg(feature = "custom")]
-    (&mut resolubles).add_children(vec!["\n Custom: ".into(), TimeContent.reset()]);
 
     let component = CONTENT
         .message([
@@ -144,8 +141,16 @@ fn main() {
                 .reset(),
         ])
         .color(Color::Green)
-        .bold(true)
-        .add_child(resolubles);
+        .bold(true);
+
+    let component = cfg_select! {
+        feature = "custom" => {
+            component.add_child(resolubles.add_children(vec!["\n Custom: ".into(), TimeContent.reset()]))
+        }
+        _ => {
+            component
+        }
+    };
 
     println!("\nDebug:\n{:?}", component);
     #[cfg(feature = "serde")]

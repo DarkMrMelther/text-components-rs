@@ -3,18 +3,18 @@ use std::sync::Arc;
 #[cfg(feature = "custom")]
 use crate::custom::CustomData;
 use crate::{
-    TextComponent,
+    RawTextComponent,
     content::{Content, Resolvable},
 };
 
 /// Recommendation: Implement this on the World and Player
-pub trait TextResolutor {
-    fn resolve_other(&self, content: &Content) -> TextComponent {
-        TextComponent::from(content.clone())
+pub trait TextResolutor<'a> {
+    fn resolve_other(&self, content: &Content<'a>) -> RawTextComponent<'a> {
+        RawTextComponent::from(content.clone())
     }
-    fn resolve_content(&self, resolvable: &Resolvable) -> TextComponent;
+    fn resolve_content(&self, resolvable: &Resolvable<'a>) -> RawTextComponent<'a>;
     #[cfg(feature = "custom")]
-    fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent>;
+    fn resolve_custom(&self, data: &CustomData<'a>) -> Option<RawTextComponent<'a>>;
     fn translate(&self, key: &str) -> Option<String>;
     fn split_translation(&self, text: String) -> Vec<(String, usize)> {
         let mut positions = vec![(0, 0, 0), (text.len(), 0, 0)];
@@ -39,13 +39,13 @@ pub trait TextResolutor {
     }
 }
 
-impl<T: TextResolutor> TextResolutor for Arc<T> {
-    fn resolve_content(&self, resolvable: &Resolvable) -> TextComponent {
+impl<'a, T: TextResolutor<'a>> TextResolutor<'a> for Arc<T> {
+    fn resolve_content(&self, resolvable: &Resolvable<'a>) -> RawTextComponent<'a> {
         (**self).resolve_content(resolvable)
     }
 
     #[cfg(feature = "custom")]
-    fn resolve_custom(&self, data: &CustomData) -> Option<TextComponent> {
+    fn resolve_custom(&self, data: &CustomData<'a>) -> Option<RawTextComponent<'a>> {
         (**self).resolve_custom(data)
     }
 
@@ -59,22 +59,22 @@ impl<T: TextResolutor> TextResolutor for Arc<T> {
 }
 
 pub struct NoResolutor;
-impl TextResolutor for NoResolutor {
-    fn resolve_content(&self, resolvable: &Resolvable) -> TextComponent {
+impl<'a> TextResolutor<'a> for NoResolutor {
+    fn resolve_content(&self, resolvable: &Resolvable<'a>) -> RawTextComponent<'a> {
         match resolvable {
             Resolvable::Scoreboard { objective, .. } => {
-                TextComponent::plain(format!("[Score: {objective}]"))
+                RawTextComponent::plain(format!("[Score: {objective}]"))
             }
             Resolvable::Entity { selector, .. } => {
-                TextComponent::plain(format!("[Entity: {selector}]"))
+                RawTextComponent::plain(format!("[Entity: {selector}]"))
             }
-            Resolvable::NBT { path, .. } => TextComponent::plain(format!("[Nbt: {path}]")),
+            Resolvable::NBT { path, .. } => RawTextComponent::plain(format!("[Nbt: {path}]")),
         }
     }
 
     #[cfg(feature = "custom")]
-    fn resolve_custom(&self, data: &crate::custom::CustomData) -> Option<TextComponent> {
-        Some(TextComponent::plain(data.id.clone()))
+    fn resolve_custom(&self, data: &crate::custom::CustomData<'a>) -> Option<RawTextComponent<'a>> {
+        Some(RawTextComponent::plain(data.id.clone()))
     }
 
     fn translate(&self, _key: &str) -> Option<String> {
@@ -82,8 +82,8 @@ impl TextResolutor for NoResolutor {
     }
 }
 
-impl TextComponent {
-    pub fn build<R: TextResolutor + ?Sized, S: BuildTarget>(
+impl<'a> RawTextComponent<'a> {
+    pub fn build<R: TextResolutor<'a> + ?Sized, S: BuildTarget<'a>>(
         &self,
         resolutor: &R,
         target: S,
@@ -91,12 +91,12 @@ impl TextComponent {
         target.build_component(resolutor, &self.resolve(resolutor))
     }
 
-    pub fn resolve<R: TextResolutor + ?Sized>(&self, resolutor: &R) -> TextComponent {
+    pub fn resolve<R: TextResolutor<'a> + ?Sized>(&self, resolutor: &R) -> RawTextComponent<'a> {
         let mut component = match &self.content {
             #[cfg(feature = "custom")]
             Content::Custom(data) => resolutor
                 .resolve_custom(data)
-                .unwrap_or(TextComponent::new()),
+                .unwrap_or(RawTextComponent::new()),
             Content::Resolvable(resolvable) => resolutor.resolve_content(resolvable),
             content => resolutor.resolve_other(content),
         };
@@ -106,7 +106,7 @@ impl TextComponent {
                 message.args = message.args.as_ref().map(|args| {
                     args.iter()
                         .map(|arg| arg.resolve(resolutor))
-                        .collect::<Vec<TextComponent>>()
+                        .collect::<Vec<RawTextComponent>>()
                         .into_boxed_slice()
                 });
             }
@@ -133,11 +133,11 @@ impl TextComponent {
     }
 }
 
-pub trait BuildTarget {
+pub trait BuildTarget<'a> {
     type Result;
-    fn build_component<R: TextResolutor + ?Sized>(
+    fn build_component<R: TextResolutor<'a> + ?Sized>(
         &self,
         resolutor: &R,
-        component: &TextComponent,
+        component: &RawTextComponent<'a>,
     ) -> Self::Result;
 }

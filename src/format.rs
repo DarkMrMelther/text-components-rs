@@ -2,8 +2,9 @@ use colored::{ColoredString, Colorize};
 use std::{borrow::Cow, fmt::Display};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct Format {
+pub struct Format<'a> {
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
@@ -13,7 +14,7 @@ pub struct Format {
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
     )]
-    pub font: Option<Cow<'static, str>>,
+    pub font: Option<Cow<'a, str>>,
     #[cfg_attr(
         feature = "serde",
         serde(skip_serializing_if = "Option::is_none", default)
@@ -46,12 +47,12 @@ pub struct Format {
     pub shadow_color: Option<i64>,
 }
 
-impl Default for Format {
+impl<'a> Default for Format<'a> {
     fn default() -> Self {
         Self::new()
     }
 }
-impl Format {
+impl<'a> Format<'a> {
     pub const fn new() -> Self {
         Self {
             color: None,
@@ -84,7 +85,7 @@ impl Format {
         }
         self
     }
-    pub fn font<F: Into<Cow<'static, str>>>(mut self, font: F) -> Self {
+    pub fn font<F: Into<Cow<'a, str>>>(mut self, font: F) -> Self {
         self.font = Some(font.into());
         self
     }
@@ -126,7 +127,7 @@ impl Format {
         self.shadow_color = None;
         self
     }
-    pub fn mix(&self, other: &Format) -> Format {
+    pub fn mix(&self, other: &Format<'a>) -> Format<'a> {
         Format {
             color: if self.color.is_some() {
                 self.color
@@ -173,6 +174,7 @@ impl Format {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "ownable", derive(::ownable::IntoOwned, ::ownable::ToOwned))]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Color {

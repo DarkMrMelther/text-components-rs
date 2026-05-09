@@ -1,5 +1,5 @@
 use crate::{
-    TextComponent,
+    RawTextComponent,
     content::{Content, Object},
     format::{Color, Format},
     interactivity::{ClickEvent, Interactivity},
@@ -62,10 +62,10 @@ const OBFUSCATION_CHARS: [char; 822] = [
 
 pub struct TextBuilder;
 impl TextBuilder {
-    fn stringify_content<R: TextResolutor + ?Sized, S: BuildTarget>(
+    fn stringify_content<'a, R: TextResolutor<'a> + ?Sized, S: BuildTarget<'a>>(
         target: &S,
         resolutor: &R,
-        component: &TextComponent,
+        component: &RawTextComponent<'a>,
     ) -> S::Result
     where
         S::Result: From<String> + ToString + Display,
@@ -83,10 +83,10 @@ impl TextBuilder {
                 let parts = resolutor.split_translation(translated);
                 let mut built_parts = vec![];
                 for (part, pos) in parts {
-                    let component_part = TextComponent {
+                    let component_part = RawTextComponent {
                         content: part.into(),
                         format: component.format.clone(),
-                        ..TextComponent::new()
+                        ..RawTextComponent::new()
                     };
                     built_parts.push(
                         target
@@ -98,7 +98,7 @@ impl TextBuilder {
                         && pos <= args.len()
                         && let Some(arg) = args.get(pos - 1)
                     {
-                        let arg_part = TextComponent {
+                        let arg_part = RawTextComponent {
                             content: arg.content.clone(),
                             children: arg.children.clone(),
                             format: arg.format.mix(&component.format),
@@ -126,12 +126,12 @@ impl TextBuilder {
         }
     }
 }
-impl BuildTarget for TextBuilder {
+impl<'a> BuildTarget<'a> for TextBuilder {
     type Result = String;
-    fn build_component<R: TextResolutor + ?Sized>(
+    fn build_component<R: TextResolutor<'a> + ?Sized>(
         &self,
         resolutor: &R,
-        component: &TextComponent,
+        component: &RawTextComponent<'a>,
     ) -> String {
         Self::stringify_content(self, resolutor, component)
             + &component
@@ -144,12 +144,12 @@ impl BuildTarget for TextBuilder {
 }
 
 pub struct PrettyTextBuilder;
-impl BuildTarget for PrettyTextBuilder {
+impl<'a> BuildTarget<'a> for PrettyTextBuilder {
     type Result = ColoredString;
-    fn build_component<R: TextResolutor + ?Sized>(
+    fn build_component<R: TextResolutor<'a> + ?Sized>(
         &self,
         resolutor: &R,
-        component: &TextComponent,
+        component: &RawTextComponent<'a>,
     ) -> ColoredString {
         let mut final_text = TextBuilder::stringify_content(self, resolutor, component);
 
@@ -161,7 +161,7 @@ impl BuildTarget for PrettyTextBuilder {
                     .children
                     .iter()
                     .map(|child| {
-                        let child = TextComponent {
+                        let child = RawTextComponent {
                             content: child.content.clone(),
                             children: child.children.clone(),
                             format: child.format.mix(&component.format),
@@ -222,7 +222,7 @@ impl BuildTarget for PrettyTextBuilder {
                 .children
                 .iter()
                 .map(|child| {
-                    let child = TextComponent {
+                    let child = RawTextComponent {
                         content: child.content.clone(),
                         children: child.children.clone(),
                         format: child.format.mix(&component.format),
@@ -237,41 +237,41 @@ impl BuildTarget for PrettyTextBuilder {
     }
 }
 
-impl TextComponent {
-    pub fn to_plain<R: TextResolutor + ?Sized>(&self, resolutor: &R) -> String {
+impl<'a> RawTextComponent<'a> {
+    pub fn to_plain<R: TextResolutor<'a> + ?Sized>(&self, resolutor: &R) -> String {
         self.build(resolutor, TextBuilder)
     }
-    pub fn to_pretty<R: TextResolutor + ?Sized>(&self, resolutor: &R) -> ColoredString {
+    pub fn to_pretty<R: TextResolutor<'a> + ?Sized>(&self, resolutor: &R) -> ColoredString {
         self.build(resolutor, PrettyTextBuilder)
     }
 }
 
-static mut DISPLAY_RESOLUTOR: &dyn TextResolutor = &NoResolutor;
+static mut DISPLAY_RESOLUTOR: &'static dyn for<'a> TextResolutor<'a> =
+    &NoResolutor as &'static dyn for<'a> TextResolutor<'a>;
 static mut INITIALIZED: bool = false;
 
-pub fn set_display_resolutor<T: TextResolutor>(resolutor: &'static T) {
+pub fn set_display_resolutor<T: for<'a> TextResolutor<'a>>(resolutor: &'static T) {
     unsafe {
         if !INITIALIZED {
-            DISPLAY_RESOLUTOR = resolutor;
+            DISPLAY_RESOLUTOR = resolutor as &'static dyn for<'a> TextResolutor<'a>;
             INITIALIZED = true;
         }
     }
 }
 
-impl Display for TextComponent {
+impl Display for RawTextComponent<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", unsafe { self.to_plain(DISPLAY_RESOLUTOR) })
     }
 }
 
-/// Clearly a Pointer, not 'p' because of pretty, OF COURSE
-impl Pointer for TextComponent {
+impl<'a> Pointer for RawTextComponent<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", unsafe { self.to_pretty(DISPLAY_RESOLUTOR) })
     }
 }
 
-impl Debug for TextComponent {
+impl<'a> Debug for RawTextComponent<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut debug = f.debug_struct("TextComponent");
         debug.field("content", &self.content);
@@ -288,7 +288,7 @@ impl Debug for TextComponent {
     }
 }
 
-impl Debug for Content {
+impl<'a> Debug for Content<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Text { text } => Debug::fmt(&text, f),
@@ -302,7 +302,7 @@ impl Debug for Content {
     }
 }
 
-impl Debug for Format {
+impl<'a> Debug for Format<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if let Some(Color::White) = self.color
             && let Some(Cow::Borrowed("minecraft:default")) = self.font
@@ -372,7 +372,7 @@ impl Debug for Format {
     }
 }
 
-impl Debug for Interactivity {
+impl<'a> Debug for Interactivity<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut debug = f.debug_map();
         if self.insertion.is_some() {

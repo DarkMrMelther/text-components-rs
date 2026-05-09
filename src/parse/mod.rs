@@ -1,7 +1,7 @@
 #[cfg(feature = "custom")]
 use crate::custom::{CustomData, Payload};
 use crate::{
-    Modifier, TextComponent,
+    Modifier, RawTextComponent,
     content::{Content, NbtSource, Object, ObjectPlayer, PlayerProperties, Resolvable},
     format::{Color, Format},
     interactivity::{ClickEvent, HoverEvent, Interactivity},
@@ -56,13 +56,16 @@ impl Display for SnbtError {
 
 pub type SnbtResult<T> = Result<T, SnbtError>;
 
-impl TextComponent {
-    pub fn from_snbt(string: &str) -> SnbtResult<TextComponent> {
+impl<'a> RawTextComponent<'a> {
+    pub fn from_snbt(string: &'a str) -> SnbtResult<RawTextComponent<'a>> {
         parse_body(None, &mut string.chars().peekable())
     }
 }
 
-fn parse_body(first: Option<char>, chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
+fn parse_body<'a>(
+    first: Option<char>,
+    chars: &mut Peekable<Chars>,
+) -> SnbtResult<RawTextComponent<'a>> {
     let char = match first {
         Some(first) => first,
         None => {
@@ -82,8 +85,8 @@ fn parse_body(first: Option<char>, chars: &mut Peekable<Chars>) -> SnbtResult<Te
     };
 
     match char {
-        '"' => return parse_string('"', chars).map(TextComponent::plain),
-        '\'' => return parse_string('\'', chars).map(TextComponent::plain),
+        '"' => return parse_string('"', chars).map(RawTextComponent::plain),
+        '\'' => return parse_string('\'', chars).map(RawTextComponent::plain),
         '[' => {
             let mut components = parse_vec(chars)?.into_iter();
             let first = components.next().ok_or(SnbtError::Required(
@@ -123,7 +126,7 @@ fn parse_string(opener: char, chars: &mut Peekable<Chars>) -> SnbtResult<String>
     Err(SnbtError::EndedAbruptely(line!()))
 }
 
-fn parse_vec(chars: &mut Peekable<Chars>) -> SnbtResult<Vec<TextComponent>> {
+fn parse_vec<'a>(chars: &mut Peekable<Chars>) -> SnbtResult<Vec<RawTextComponent<'a>>> {
     let mut component = vec![];
     let Ok(child) = parse_body(None, chars) else {
         return Err(SnbtError::UnfinishedComponent(line!()));
@@ -145,14 +148,14 @@ fn parse_vec(chars: &mut Peekable<Chars>) -> SnbtResult<Vec<TextComponent>> {
     Err(SnbtError::EndedAbruptely(line!()))
 }
 
-struct CompoundParts {
+struct CompoundParts<'a> {
     pub content: String,
     pub object: String,
-    pub contents: [Option<Content>; 9],
+    pub contents: [Option<Content<'a>>; 9],
     pub nbt: String,
-    pub nbt_sources: [Option<NbtSource>; 3],
+    pub nbt_sources: [Option<NbtSource<'a>>; 3],
 }
-impl CompoundParts {
+impl<'a> CompoundParts<'a> {
     pub fn new() -> Self {
         CompoundParts {
             content: String::new(),
@@ -164,7 +167,7 @@ impl CompoundParts {
     }
 }
 
-fn parse_compound(chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
+fn parse_compound<'a>(chars: &mut Peekable<Chars>) -> SnbtResult<RawTextComponent<'a>> {
     let mut compound = CompoundParts::new();
     let mut format = Format::new();
     let mut interactions = Interactivity::new();
@@ -177,7 +180,7 @@ fn parse_compound(chars: &mut Peekable<Chars>) -> SnbtResult<TextComponent> {
         }
         match char {
             '}' => {
-                return Ok(TextComponent {
+                return Ok(RawTextComponent {
                     content: retrieve_content(compound)?,
                     children,
                     format,
@@ -514,7 +517,7 @@ fn match_content(
     }
 }
 
-fn parse_scoreboard(chars: &mut Peekable<Chars>) -> SnbtResult<Content> {
+fn parse_scoreboard<'a>(chars: &mut Peekable<Chars>) -> SnbtResult<Content<'a>> {
     let mut selector = None;
     let mut objective = None;
     let mut name = String::new();
@@ -578,7 +581,7 @@ fn parse_scoreboard(chars: &mut Peekable<Chars>) -> SnbtResult<Content> {
     }
     Err(SnbtError::EndedAbruptely(line!()))
 }
-fn parse_player(chars: &mut Peekable<Chars>) -> SnbtResult<ObjectPlayer> {
+fn parse_player<'a>(chars: &mut Peekable<Chars>) -> SnbtResult<ObjectPlayer<'a>> {
     let mut player = ObjectPlayer {
         name: None,
         id: None,
@@ -675,7 +678,7 @@ fn parse_player(chars: &mut Peekable<Chars>) -> SnbtResult<ObjectPlayer> {
     }
     Err(SnbtError::EndedAbruptely(line!()))
 }
-fn parse_player_property(chars: &mut Peekable<Chars>) -> SnbtResult<PlayerProperties> {
+fn parse_player_property<'a>(chars: &mut Peekable<Chars>) -> SnbtResult<PlayerProperties<'a>> {
     let mut property = PlayerProperties {
         name: Cow::Borrowed("-None-"),
         value: Cow::Borrowed("-None-"),
@@ -744,7 +747,7 @@ fn parse_player_property(chars: &mut Peekable<Chars>) -> SnbtResult<PlayerProper
     Err(SnbtError::EndedAbruptely(line!()))
 }
 #[cfg(feature = "custom")]
-fn parse_custom(chars: &mut Peekable<Chars>) -> SnbtResult<CustomData> {
+fn parse_custom<'a>(chars: &mut Peekable<Chars>) -> SnbtResult<CustomData<'a>> {
     let mut id = None;
     let mut name = String::new();
     let mut in_name = true;
@@ -802,7 +805,7 @@ fn parse_custom(chars: &mut Peekable<Chars>) -> SnbtResult<CustomData> {
     Err(SnbtError::EndedAbruptely(line!()))
 }
 
-fn retrieve_content(compound: CompoundParts) -> SnbtResult<Content> {
+fn retrieve_content<'a>(compound: CompoundParts<'a>) -> SnbtResult<Content<'a>> {
     let mut error = SnbtError::MissingContent;
     let pos = match compound.content.as_str() {
         "text" => Some(0),
@@ -842,11 +845,11 @@ fn retrieve_content(compound: CompoundParts) -> SnbtResult<Content> {
     }
     Err(error)
 }
-fn match_content_type(
-    mut content: Content,
+fn match_content_type<'a>(
+    mut content: Content<'a>,
     nbt: &str,
-    nbt_sources: &[Option<NbtSource>; 3],
-) -> SnbtResult<Content> {
+    nbt_sources: &[Option<NbtSource<'a>>; 3],
+) -> SnbtResult<Content<'a>> {
     match &mut content {
         Content::Translate(msg) => {
             if !msg.key.is_empty() {
@@ -1083,7 +1086,7 @@ fn match_interactions(
     }
 }
 
-fn parse_click(chars: &mut Peekable<Chars>) -> SnbtResult<ClickEvent> {
+fn parse_click<'a>(chars: &mut Peekable<Chars>) -> SnbtResult<ClickEvent<'a>> {
     let mut action = String::new();
     let mut events = [None, None, None, None, None, None, None, None];
     let mut name = String::new();
@@ -1188,7 +1191,7 @@ fn parse_click(chars: &mut Peekable<Chars>) -> SnbtResult<ClickEvent> {
                                     })
                                 }
                                 "command" => {
-                                    let command: Cow<'static, str> =
+                                    let command: Cow<'a, str> =
                                         Cow::Owned(parse_string(next, chars)?);
                                     events[2] = Some(ClickEvent::RunCommand {
                                         command: command.clone(),
@@ -1237,7 +1240,7 @@ fn parse_click(chars: &mut Peekable<Chars>) -> SnbtResult<ClickEvent> {
     }
     Err(SnbtError::EndedAbruptely(line!()))
 }
-fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
+fn parse_hover<'a>(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent<'a>> {
     let mut action = String::new();
     let mut events = [None, None, None];
     let mut name = String::new();
@@ -1320,8 +1323,7 @@ fn parse_hover(chars: &mut Peekable<Chars>) -> SnbtResult<HoverEvent> {
                         }
                         "id" => match next {
                             '\'' | '"' => {
-                                let new_id: Cow<'static, str> =
-                                    Cow::Owned(parse_string(next, chars)?);
+                                let new_id: Cow<'a, str> = Cow::Owned(parse_string(next, chars)?);
                                 match &mut events[1] {
                                     Some(HoverEvent::ShowItem { id, .. }) => {
                                         *id = new_id.clone();
